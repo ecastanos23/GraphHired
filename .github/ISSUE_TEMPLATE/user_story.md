@@ -1,32 +1,35 @@
 ---
-name: 'Historia de Usuario (H.U.)'
-about: 'Plantilla estándar con priorización MoSCoW para GraphHired.'
-title: '[U.H.] '
-labels: ['priority: Must-Have']
+name: "Historia de Usuario (Funcional)"
+about: Template para funcionalidades del usuario final
+title: "HU XX: [Nombre Corto]"
+labels: ["Must Have"]
 assignees: ''
----
-
-##  Descripción
-**Como** [tipo de usuario]
-**Quiero** [acción técnica o funcional]
-**Para** [beneficio o valor esperado]
 
 ---
 
-##  Criterios de Aceptación
-- [ ] [Criterio 1: ej. El sistema debe validar el código del bloque]
-- [ ] [Criterio 2: ej. Mostrar el resultado en menos de 1 segundo]
-- [ ] [Criterio 3: ej. Interfaz compatible con dispositivos móviles]
+### 1. Definición (User Story)
+**Como** [Rol del usuario: Candidato/Reclutador/Agente]
+**Quiero** [Acción/Funcionalidad]
+**Para** [Valor o beneficio esperado]
 
----
+### 2. Módulo
+- [ ] Onboarding e Inteligencia de Perfil
+- [ ] Matching y Recomendación
+- [ ] Postulación Automatizada
+- [ ] Tablero de Seguimiento
 
-##  Clasificación MoSCoW
-*Por favor, selecciona la etiqueta correspondiente en el panel lateral y marca la opción aquí:*
+### 3. Condiciones de Aceptación (CA)
+*Define el comportamiento esperado del sistema:*
+- [ ] **CA1 (Validación):** En caso de que el usuario no ingrese información en un campo obligatorio, el sistema debe generar una alerta “Favor ingresar información válida en los campos obligatorios”.
+- [ ] **CA2 (Interfaz):** Al aceptar el mensaje de error, los datos previos deben permanecer y el primer campo pendiente debe resaltarse en rojo y recibir el foco.
+- [ ] **CA3:** [Agregar otra condición específica...]
 
-- [ ] **Must-Have**: Crítico para el MVP (No negociable).
-- [ ] **Should-Have**: Importante pero no vital para la primera entrega.
-- [ ] **Could-Have**: Deseable si el tiempo lo permite.
-- [ ] **Won't-Have**: No se implementará en esta fase del proyecto.
+### 4. Tareas Técnicas
+- [ ] [Tarea 1: Ejemplo - Crear componente de formulario]
+- [ ] [Tarea 2: Ejemplo - Configurar validaciones con Zod]
+- [ ] [Tarea 3: Ejemplo - Conectar con el endpoint de API]
 
----
-
+### 5. Prioridad (MoSCoW)
+- [ ] Must Have
+- [ ] Should Have
+- [ ] Could Have
