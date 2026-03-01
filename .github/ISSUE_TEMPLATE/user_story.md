@@ -30,7 +30,3 @@ assignees: ''
 
 ---
 
-## Notas Técnicas
-- **Tecnología:** [ej. React, Python, Django]
-- **Responsable del Servicio:** [Nombre del compañero de equipo]
-- **Dependencias:** [Vincular con # de Issue si aplica]
