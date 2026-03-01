@@ -17,6 +17,7 @@ assignees: ''
 - [ ] Matching y Recomendación
 - [ ] Postulación Automatizada
 - [ ] Tablero de Seguimiento
+- [ ] Experiencia y Calidad
 
 ### 3. Condiciones de Aceptación (CA)
 *Define el comportamiento esperado del sistema:*
