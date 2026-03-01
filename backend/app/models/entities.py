@@ -1,12 +1,19 @@
 """
 SQLAlchemy Database Models
-ORM models for PostgreSQL with pgvector
+ORM models - Text for embeddings (SQLite), Vector for production (PostgreSQL+pgvector)
 """
 from sqlalchemy import Column, Integer, String, Text, Boolean, DECIMAL, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from pgvector.sqlalchemy import Vector
 from app.core.database import Base
+from app.core.config import settings
+
+# Use Text for SQLite, Vector for PostgreSQL
+if settings.USE_SQLITE:
+    EmbeddingColumn = Text
+else:
+    from pgvector.sqlalchemy import Vector
+    EmbeddingColumn = Vector(1536)
 
 class Log(Base):
     """Log model for PoC testing"""
@@ -27,7 +34,7 @@ class Candidate(Base):
     full_name = Column(String(255), nullable=False)
     phone = Column(String(50), nullable=True)
     cv_text = Column(Text, nullable=True)
-    cv_embedding = Column(Vector(1536), nullable=True)
+    cv_embedding = Column(EmbeddingColumn, nullable=True)
     expected_salary = Column(DECIMAL(12, 2), nullable=True)
     work_modality = Column(String(50), nullable=True)
     location = Column(String(255), nullable=True)
@@ -48,7 +55,7 @@ class Vacancy(Base):
     title = Column(String(255), nullable=False)
     company = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
-    description_embedding = Column(Vector(1536), nullable=True)
+    description_embedding = Column(EmbeddingColumn, nullable=True)
     required_skills = Column(JSON, default=list)
     salary_min = Column(DECIMAL(12, 2), nullable=True)
     salary_max = Column(DECIMAL(12, 2), nullable=True)

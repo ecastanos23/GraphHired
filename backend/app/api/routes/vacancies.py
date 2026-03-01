@@ -41,7 +41,7 @@ async def get_vacancies(
 
 @router.get("/search", response_model=List[VacancyResponse])
 async def search_vacancies(
-    work_modality: Optional[str] = Query(None, regex="^(remote|hybrid|onsite)$"),
+    work_modality: Optional[str] = Query(None, pattern="^(remote|hybrid|onsite)$"),
     min_salary: Optional[Decimal] = None,
     max_experience: Optional[int] = None,
     location: Optional[str] = None,

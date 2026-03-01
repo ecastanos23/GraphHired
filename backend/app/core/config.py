@@ -8,20 +8,19 @@ from functools import lru_cache
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
     
-    # Database
+    # Database - SQLite for local dev, PostgreSQL for production
+    DATABASE_URL: str = "sqlite:///./graphhired.db"
     DB_USER: str = "postgres"
     DB_PASSWORD: str = "postgres"
-    DB_HOST: str = "db"
+    DB_HOST: str = "localhost"
     DB_PORT: str = "5432"
     DB_NAME: str = "graphhired"
+    USE_SQLITE: bool = True
     
-    @property
-    def DATABASE_URL(self) -> str:
+    def get_database_url(self) -> str:
+        if self.USE_SQLITE:
+            return self.DATABASE_URL
         return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-    
-    @property
-    def ASYNC_DATABASE_URL(self) -> str:
-        return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
     
     # OpenAI
     OPENAI_API_KEY: str = ""
@@ -34,6 +33,7 @@ class Settings(BaseSettings):
     # Application
     DEBUG: bool = True
     BACKEND_PORT: int = 8000
+    PROJECT_NAME: str = "GraphHired API"
     
     class Config:
         env_file = ".env"
