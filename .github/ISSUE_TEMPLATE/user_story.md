@@ -1,12 +1,12 @@
 ---
-name: 'Historia de Usuario (U.H.)'
+name: 'Historia de Usuario (H.U.)'
 about: 'Plantilla estándar con priorización MoSCoW para GraphHired.'
 title: '[U.H.] '
 labels: ['priority: Must-Have']
 assignees: ''
 ---
 
-##  Descripción (User Story)
+##  Descripción
 **Como** [tipo de usuario]
 **Quiero** [acción técnica o funcional]
 **Para** [beneficio o valor esperado]
