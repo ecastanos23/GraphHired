@@ -1,15 +1,9 @@
 ---
-
-name: "Historia de Usuario (U.H.)"
-
-about: Plantilla estándar con priorización MoSCoW para GraphHired.
-
-title: "\[U.H.] "
-
-labels: \["priority: Must-Have", "priority: Should-Have", "priority: Could-Have", "priority: Won't-Have"]
-
+name: 'Historia de Usuario (U.H.)'
+about: 'Plantilla estándar con priorización MoSCoW para GraphHired.'
+title: '[U.H.] '
+labels: ['priority: Must-Have', 'priority: Should-Have', 'priority: Could-Have', 'priority: Wont-Have']
 assignees: ''
-
 ---
 
 
