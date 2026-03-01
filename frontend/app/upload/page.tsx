@@ -16,6 +16,12 @@ interface FormErrors {
   [key: string]: boolean;
 }
 
+interface CandidateResponse {
+  id: number;
+  email: string;
+  full_name: string;
+}
+
 export default function UploadPage() {
   const { post, loading, error } = useApi();
   const [formData, setFormData] = useState<FormData>({
@@ -53,7 +59,7 @@ export default function UploadPage() {
     }
 
     try {
-      const response = await post('/api/candidates/upload-cv', {
+      const response = await post<CandidateResponse>('/api/candidates/upload-cv', {
         ...formData,
         expected_salary: parseFloat(formData.expected_salary)
       });

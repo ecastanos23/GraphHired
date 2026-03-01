@@ -21,7 +21,7 @@ export default function PoCPage() {
     if (!inputText.trim()) return;
 
     try {
-      const response = await post('/api/logs/process', { input_text: inputText });
+      const response = await post<LogEntry>('/api/logs/process', { input_text: inputText });
       setResult(response);
       setInputText('');
       // Refresh logs
@@ -33,7 +33,7 @@ export default function PoCPage() {
 
   const fetchLogs = async () => {
     try {
-      const data = await get('/api/logs?limit=10');
+      const data = await get<LogEntry[]>('/api/logs?limit=10');
       setLogs(data || []);
     } catch (err) {
       console.error('Error fetching logs:', err);

@@ -51,7 +51,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchCandidates = async () => {
       try {
-        const data = await get('/api/candidates');
+        const data = await get<Candidate[]>('/api/candidates');
         setCandidates(data || []);
       } catch (err) {
         console.error('Error fetching candidates:', err);
@@ -69,7 +69,7 @@ export default function DashboardPage() {
 
   const fetchMatches = async (candidateId: number) => {
     try {
-      const data = await get(`/api/matching/candidate/${candidateId}?min_score=0&limit=20`);
+      const data = await get<MatchingResponse>(`/api/matching/candidate/${candidateId}?min_score=0&limit=20`);
       setMatches(data);
     } catch (err) {
       console.error('Error fetching matches:', err);
