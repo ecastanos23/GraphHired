@@ -1,12 +1,13 @@
+<!-- filepath: c:\Users\Emmanuel\Documents\ING. DE SOFTWARE\PROYECTO_MAGNETO\graphhired\backend\requirements.txt -->
 # Web Framework
 fastapi==0.109.2
 uvicorn[standard]==0.27.1
 
 # AI/LLM
 langgraph==0.0.26
-langchain==0.1.6
-langchain-openai==0.0.5
-langchain-community==0.0.19
+langchain==0.1.14
+langchain-openai==0.1.11
+langchain-community==0.0.26
 
 # Database
 sqlalchemy==2.0.25

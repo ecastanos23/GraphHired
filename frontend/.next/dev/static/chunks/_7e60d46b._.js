@@ -11,7 +11,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 var _s = __turbopack_context__.k.signature();
 'use client';
 ;
-const API_URL = ("TURBOPACK compile-time value", "http://localhost:8000") || 'http://localhost:8000';
+const API_URL = ("TURBOPACK compile-time value", "http://localhost:8001") || 'http://localhost:8000';
 function useApi() {
     _s();
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);

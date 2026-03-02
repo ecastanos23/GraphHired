@@ -1,6 +1,7 @@
 """
 Candidates API Routes
 CV upload, profile management, and candidate operations
+HU 01 - Entrada/Proceso/Salida del sistema
 """
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
@@ -38,9 +39,11 @@ async def create_candidate(data: CandidateCreate, db: Session = Depends(get_db))
     return candidate
 
 @router.post("/upload-cv", response_model=CandidateResponse)
+@router.post("/upload_cv", response_model=CandidateResponse, include_in_schema=False)
 async def upload_cv_with_expectations(data: CVUpload, db: Session = Depends(get_db)):
     """
     Upload CV with candidate expectations (salary, modality, location)
+    HU 01 - 5.2 Proceso: Validar e invocar el agente de perfil
     Validates required fields and creates/updates candidate profile
     """
     repo = CandidateRepository(db)
@@ -82,8 +85,13 @@ async def upload_cv_with_expectations(data: CVUpload, db: Session = Depends(get_
         existing.work_modality = data.work_modality
         existing.location = clean_location
         
-        # Analyze CV for skills extraction
-        profile = analyze_profile(clean_cv)
+        # 5.2 Proceso: Invocar agente de perfil con expectativas
+        expectations = {
+            "salary": data.expected_salary,
+            "modality": data.work_modality,
+            "location": clean_location
+        }
+        profile = analyze_profile(clean_cv, expectations)
         existing.skills = profile["skills"]
         existing.experience_years = profile["experience_years"]
         
@@ -102,8 +110,13 @@ async def upload_cv_with_expectations(data: CVUpload, db: Session = Depends(get_
         )
         candidate = repo.create(candidate_data)
         
-        # Analyze CV
-        profile = analyze_profile(clean_cv)
+        # 5.2 Proceso: Invocar agente de perfil con expectativas
+        expectations = {
+            "salary": data.expected_salary,
+            "modality": data.work_modality,
+            "location": clean_location
+        }
+        profile = analyze_profile(clean_cv, expectations)
         repo.update_profile(
             candidate.id,
             skills=profile["skills"],
