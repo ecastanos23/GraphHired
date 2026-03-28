@@ -15,10 +15,10 @@ app = FastAPI(
     description="AI-powered job matching platform using LangGraph agents"
 )
 
-# CORS middleware for frontend communication
+# CORS middleware for frontend communication (TEMP: allow all for debug)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://frontend:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
