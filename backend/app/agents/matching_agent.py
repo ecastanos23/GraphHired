@@ -4,7 +4,7 @@ Uses embeddings for similarity search and rule-based filtering
 """
 from typing import TypedDict, List, Optional
 from langgraph.graph import StateGraph, END
-from langchain_openai import OpenAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from decimal import Decimal
 import numpy as np
 
@@ -33,12 +33,12 @@ class MatchState(TypedDict):
 
 def get_embeddings():
     """Get embeddings instance"""
-    api_key = settings.OPENAI_API_KEY
+    api_key = settings.GEMINI_API_KEY
     if not api_key:
         return None
-    return OpenAIEmbeddings(
-        model=settings.OPENAI_EMBEDDING_MODEL,
-        api_key=api_key
+    return GoogleGenerativeAIEmbeddings(
+        model=settings.GEMINI_EMBEDDING_MODEL,
+        google_api_key=api_key
     )
 
 def calculate_skill_match(state: MatchState) -> MatchState:
@@ -149,14 +149,14 @@ def create_matching_graph() -> StateGraph:
     workflow.add_node("experience_match", calculate_experience_match)
     workflow.add_node("salary_match", calculate_salary_match)
     workflow.add_node("modality_match", calculate_modality_match)
-    workflow.add_node("total_score", calculate_total_score)
+    workflow.add_node("calculate_total_score", calculate_total_score)
     
     workflow.set_entry_point("skill_match")
     workflow.add_edge("skill_match", "experience_match")
     workflow.add_edge("experience_match", "salary_match")
     workflow.add_edge("salary_match", "modality_match")
-    workflow.add_edge("modality_match", "total_score")
-    workflow.add_edge("total_score", END)
+    workflow.add_edge("modality_match", "calculate_total_score")
+    workflow.add_edge("calculate_total_score", END)
     
     return workflow.compile()
 

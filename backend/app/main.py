@@ -55,3 +55,13 @@ async def health_check():
         "database": "connected",
         "ai_service": "ready"
     }
+
+@app.get("/health/ai", tags=["Health"])
+async def ai_health_check():
+    """AI provider diagnostics without exposing secrets"""
+    return {
+        "provider": "gemini",
+        "model": settings.GEMINI_MODEL,
+        "embedding_model": settings.GEMINI_EMBEDDING_MODEL,
+        "api_key_configured": bool(settings.GEMINI_API_KEY)
+    }
