@@ -7,18 +7,169 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from decimal import Decimal
+import re
 import io
+import os
+import tempfile
 
 from app.core.database import get_db
 from app.core.security import sanitize_text, sanitize_email, validate_file_type
 from app.models.schemas import (
     CandidateCreate, CandidateUpdate, CandidateResponse, 
-    CVUpload, ProfileAnalysis
+    CVUpload, ProfileAnalysis, CVGraphAnalysisResponse, VacancyCreate
 )
+from app.models.entities import Vacancy
 from app.repositories.candidate_repository import CandidateRepository
-from app.agents.profile_agent import analyze_profile
+from app.repositories.vacancy_repository import VacancyRepository
+from app.agents.profile_agent import analyze_profile, generate_colombia_job_dataset
+from app.agents.cv_profile_graph import cv_profile_graph
 
 router = APIRouter()
+
+
+AUTO_DATASET_MARKER = "[AUTO_DATASET_CANDIDATE:"
+
+
+def _salary_string_to_decimals(salary_range: str) -> tuple[Decimal, Decimal]:
+    values = re.findall(r"\d[\d\.]*", salary_range or "")
+    parsed: list[Decimal] = []
+    for value in values[:2]:
+        clean = value.replace(".", "")
+        if clean.isdigit():
+            parsed.append(Decimal(clean))
+
+    if len(parsed) == 2:
+        low, high = sorted(parsed)
+        return low, high
+    if len(parsed) == 1:
+        return parsed[0], parsed[0]
+    return Decimal("3000000"), Decimal("5000000")
+
+
+def _mode_to_db(mode: str) -> str:
+    normalized = (mode or "").strip().lower()
+    if normalized == "remoto":
+        return "remote"
+    if normalized == "hibrido":
+        return "hybrid"
+    return "onsite"
+
+
+def _experience_from_title(title: str) -> int:
+    title_lower = (title or "").lower()
+    if "junior" in title_lower or "auxiliar" in title_lower:
+        return 1
+    if "senior" in title_lower or "lider" in title_lower or "líder" in title_lower:
+        return 5
+    if "gerente" in title_lower or "director" in title_lower:
+        return 8
+    return 3
+
+
+def _sync_generated_market_vacancies(
+    db: Session,
+    candidate_id: int,
+    cv_text: str,
+    profile_data: dict,
+    preferred_location: str,
+) -> None:
+    """Create a fresh 20-item realistic Colombia market dataset tied to one candidate."""
+    marker = f"{AUTO_DATASET_MARKER}{candidate_id}]"
+
+    db.query(Vacancy).filter(Vacancy.description.contains(marker)).delete(synchronize_session=False)
+
+    dataset = generate_colombia_job_dataset(
+        cv_text=cv_text,
+        profile_data=profile_data,
+        preferred_location=preferred_location,
+    )
+
+    vacancy_repo = VacancyRepository(db)
+    for item in dataset[:20]:
+        salary_min, salary_max = _salary_string_to_decimals(str(item.get("salary", "")))
+        skills_owned = [str(skill).strip() for skill in item.get("skills_owned", []) if str(skill).strip()]
+        skills_gap = [str(skill).strip() for skill in item.get("skills_to_develop", []) if str(skill).strip()]
+        required_skills = list(dict.fromkeys((skills_owned + skills_gap)))
+
+        vacancy_data = VacancyCreate(
+            title=str(item.get("title", "Cargo no especificado")),
+            company=str(item.get("company", "Empresa Colombia")),
+            description=(
+                f"{marker} Oferta sugerida por perfil CV. "
+                f"Match estimado: {item.get('match_percentage', 55)}%. "
+                f"Habilidades actuales: {', '.join(skills_owned)}. "
+                f"Habilidades por fortalecer: {', '.join(skills_gap)}."
+            ),
+            required_skills=required_skills,
+            salary_min=salary_min,
+            salary_max=salary_max,
+            work_modality=_mode_to_db(str(item.get("mode", "Presencial"))),
+            location=str(item.get("location", preferred_location or "Bogota")),
+            experience_required=_experience_from_title(str(item.get("title", ""))),
+        )
+        vacancy_repo.create(vacancy_data)
+
+
+@router.post("/{candidate_id}/analyze-cv-pdf", response_model=CVGraphAnalysisResponse)
+async def analyze_cv_pdf_with_graph(
+    candidate_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Parse a PDF CV and extract structured profile data using LangGraph."""
+    if not file.filename or not validate_file_type(file.filename, ["pdf"]):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+
+    repo = CandidateRepository(db)
+    candidate = repo.get_by_id(candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    raw_content = await file.read()
+    if not raw_content:
+        raise HTTPException(status_code=400, detail="Uploaded PDF is empty")
+
+    temp_file_path = ""
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+            temp_file.write(raw_content)
+            temp_file_path = temp_file.name
+
+        graph_result = cv_profile_graph.invoke(
+            {
+                "raw_pdf_path": temp_file_path,
+                "extracted_text": "",
+                "structured_data": {},
+                "error": None,
+            }
+        )
+
+        if graph_result.get("error"):
+            raise HTTPException(status_code=400, detail=graph_result["error"])
+
+        structured_data = graph_result.get("structured_data", {})
+        extracted_text = graph_result.get("extracted_text", "")
+
+        clean_cv_text = sanitize_text(extracted_text)
+        skills = [sanitize_text(skill) for skill in structured_data.get("skills", []) if skill]
+        experience_years = int(structured_data.get("experience_years", 0) or 0)
+
+        repo.update_profile(
+            candidate_id=candidate_id,
+            skills=skills,
+            experience_years=experience_years,
+            cv_text=clean_cv_text,
+        )
+
+        return CVGraphAnalysisResponse(
+            candidate_id=candidate_id,
+            extracted_text_length=len(clean_cv_text),
+            structured_data=structured_data,
+            error=None,
+        )
+    finally:
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.unlink(temp_file_path)
 
 @router.post("/", response_model=CandidateResponse)
 async def create_candidate(data: CandidateCreate, db: Session = Depends(get_db)):
@@ -94,6 +245,15 @@ async def upload_cv_with_expectations(data: CVUpload, db: Session = Depends(get_
         profile = analyze_profile(clean_cv, expectations)
         existing.skills = profile["skills"]
         existing.experience_years = profile["experience_years"]
+
+        # Keep the dashboard populated with realistic and profile-aware opportunities.
+        _sync_generated_market_vacancies(
+            db=db,
+            candidate_id=existing.id,
+            cv_text=clean_cv,
+            profile_data=profile,
+            preferred_location=clean_location,
+        )
         
         db.commit()
         db.refresh(existing)
@@ -121,6 +281,15 @@ async def upload_cv_with_expectations(data: CVUpload, db: Session = Depends(get_
             candidate.id,
             skills=profile["skills"],
             experience_years=profile["experience_years"]
+        )
+
+        # Keep the dashboard populated with realistic and profile-aware opportunities.
+        _sync_generated_market_vacancies(
+            db=db,
+            candidate_id=candidate.id,
+            cv_text=clean_cv,
+            profile_data=profile,
+            preferred_location=clean_location,
         )
         
         db.refresh(candidate)

@@ -118,7 +118,7 @@ export default function CvUpload({ onSuccess, onError }: CvUploadProps) {
       {/* 5.3 Salida: Mensaje de éxito */}
       {success && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 font-medium">✓ CV registrado exitosamente!</p>
+          <p className="text-green-800 font-medium">CV registrado exitosamente.</p>
           <p className="text-green-600 text-sm mt-1">
             Tu perfil ha sido analizado por nuestra IA.
           </p>

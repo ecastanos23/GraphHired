@@ -4,20 +4,135 @@ Candidate-Vacancy matching and auto-application
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from decimal import Decimal
+import re
+import unicodedata
 
 from app.core.database import get_db
+from app.core.database_async import get_async_db
+from app.core.config import settings
 from app.models.schemas import (
     MatchResult, MatchingResponse, 
-    ApplicationCreate, ApplicationResponse
+    ApplicationCreate, ApplicationResponse, SemanticMatchingResponse, SemanticMatchItem
 )
+from app.models.entities import Candidate, Vacancy
 from app.repositories.candidate_repository import CandidateRepository
 from app.repositories.vacancy_repository import VacancyRepository
 from app.repositories.application_repository import ApplicationRepository
 from app.agents.matching_agent import match_candidate_to_vacancy
+from app.services.matching import MatchingService
 
 router = APIRouter()
+
+
+def _normalize_location_key(location: str | None) -> str:
+    raw = (location or "").strip().lower()
+    if not raw:
+        return ""
+
+    normalized = unicodedata.normalize("NFD", raw)
+    normalized = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    normalized = re.sub(r"[^a-z\s]", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+
+    aliases = {
+        "bogota": {"bogota", "bogota dc", "bogota d c", "bta"},
+        "medellin": {"medellin", "medallo", "med"},
+        "cali": {"cali", "santiago de cali"},
+        "barranquilla": {"barranquilla", "bquilla", "baq"},
+        "bucaramanga": {"bucaramanga", "bga"},
+    }
+
+    for canonical, values in aliases.items():
+        for value in values:
+            if normalized == value or value in normalized:
+                return canonical
+
+    return normalized
+
+
+def _canonical_location_label(location_key: str) -> str:
+    mapping = {
+        "bogota": "Bogota",
+        "medellin": "Medellin",
+        "cali": "Cali",
+        "barranquilla": "Barranquilla",
+        "bucaramanga": "Bucaramanga",
+    }
+    return mapping.get(location_key, "Bogota")
+
+
+async def _build_semantic_response(
+    candidate_id: int,
+    db: AsyncSession,
+    limit: int,
+) -> SemanticMatchingResponse:
+    candidate = await db.get(Candidate, candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    try:
+        matches = await MatchingService.get_best_matches(db, candidate, limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    engine = "sqlite" if settings.USE_SQLITE else "pgvector"
+    items = [
+        SemanticMatchItem(
+            vacancy_id=vacancy.id,
+            title=vacancy.title,
+            company=vacancy.company,
+            similarity_score=round(similarity_score, 2),
+            work_modality=vacancy.work_modality,
+            location=vacancy.location,
+        )
+        for vacancy, similarity_score in matches
+    ]
+
+    return SemanticMatchingResponse(
+        candidate_id=candidate_id,
+        total_matches=len(items),
+        matches=items,
+        status="success",
+        engine=engine,
+    )
+
+
+@router.get("/semantic-match/{candidate_id}")
+async def get_semantic_matches_for_candidate_v2(
+    candidate_id: int,
+    limit: int = 5,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Semantic matching endpoint that chooses SQLite text matching or pgvector semantic matching.
+    """
+    if limit <= 0:
+        raise HTTPException(status_code=400, detail="limit must be greater than 0")
+
+    response = await _build_semantic_response(candidate_id, db, limit)
+    return {
+        "status": response.status,
+        "engine": response.engine,
+        "data": [item.model_dump() for item in response.matches],
+    }
+
+
+@router.post("/semantic/{candidate_id}", response_model=SemanticMatchingResponse)
+async def get_semantic_matches_for_candidate(
+    candidate_id: int,
+    limit: int = 5,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Backward-compatible semantic matching endpoint used by the current frontend.
+    """
+    if limit <= 0:
+        raise HTTPException(status_code=400, detail="limit must be greater than 0")
+
+    return await _build_semantic_response(candidate_id, db, limit)
 
 @router.get("/candidate/{candidate_id}", response_model=MatchingResponse)
 async def get_matches_for_candidate(
@@ -29,6 +144,7 @@ async def get_matches_for_candidate(
     """
     Get recommended vacancies for a candidate with match percentages
     Uses LangGraph matching agent for scoring
+    Filters strictly by candidate location
     """
     candidate_repo = CandidateRepository(db)
     vacancy_repo = VacancyRepository(db)
@@ -38,7 +154,33 @@ async def get_matches_for_candidate(
         raise HTTPException(status_code=404, detail="Candidate not found")
     
     # Get all active vacancies
-    vacancies = vacancy_repo.get_all(active_only=True)
+    all_vacancies = vacancy_repo.get_all(active_only=True)
+    
+    # Strict filter by canonical location (supports equivalent spellings)
+    candidate_location_key = _normalize_location_key(candidate.location)
+    if candidate_location_key:
+        vacancies = [
+            v for v in all_vacancies
+            if _normalize_location_key(v.location) == candidate_location_key
+        ]
+
+        # Self-heal legacy dataset rows generated before location normalization improvements.
+        if not vacancies:
+            marker = f"[AUTO_DATASET_CANDIDATE:{candidate_id}]"
+            auto_rows = db.query(Vacancy).filter(Vacancy.description.contains(marker)).all()
+            if auto_rows:
+                canonical_label = _canonical_location_label(candidate_location_key)
+                for row in auto_rows:
+                    row.location = canonical_label
+                db.commit()
+
+                all_vacancies = vacancy_repo.get_all(active_only=True)
+                vacancies = [
+                    v for v in all_vacancies
+                    if _normalize_location_key(v.location) == candidate_location_key
+                ]
+    else:
+        vacancies = all_vacancies
     
     # Calculate matches
     matches = []

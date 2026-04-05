@@ -171,3 +171,34 @@ class ProfileAnalysis(BaseModel):
     summary: str
     strengths: List[str]
     recommended_roles: List[str]
+
+
+# =============================================================================
+# Semantic Matching Schemas
+# =============================================================================
+
+class SemanticMatchItem(BaseModel):
+    """Single semantic match item"""
+    vacancy_id: int
+    title: str
+    company: str
+    similarity_score: float = Field(..., ge=0, le=100)
+    work_modality: Optional[str]
+    location: Optional[str]
+
+
+class SemanticMatchingResponse(BaseModel):
+    """Semantic matching response using pgvector cosine distance"""
+    candidate_id: int
+    total_matches: int
+    matches: List[SemanticMatchItem]
+    status: str = "success"
+    engine: Optional[str] = None
+
+
+class CVGraphAnalysisResponse(BaseModel):
+    """Response for CV PDF parsing workflow"""
+    candidate_id: int
+    extracted_text_length: int
+    structured_data: dict
+    error: Optional[str] = None

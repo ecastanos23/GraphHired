@@ -1,5 +1,7 @@
 'use client';
 
+import { HoverButton } from '@/components/ui/hover-glow-button';
+
 interface Match {
   vacancy_id: number;
   title: string;
@@ -20,29 +22,29 @@ interface MatchCardProps {
 
 export default function MatchCard({ match, onApply, badgeClass }: MatchCardProps) {
   const modalityLabels: Record<string, string> = {
-    remote: '🏠 Remoto',
-    hybrid: '🔄 Híbrido',
-    onsite: '🏢 Presencial',
+    remote: 'Remoto',
+    hybrid: 'Hibrido',
+    onsite: 'Presencial',
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-      <div className="flex justify-between items-start mb-4">
+    <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl" id={`vacancy-card-${match.vacancy_id}`}>
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">{match.title}</h3>
-          <p className="text-gray-600">{match.company}</p>
+          <h3 className="text-lg font-semibold text-slate-900 group-hover:text-emerald-700">{match.title}</h3>
+          <p className="mt-1 text-sm text-slate-600">{match.company}</p>
         </div>
-        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${badgeClass}`}>
+        <span className={`rounded-full px-3 py-1 text-sm font-semibold ${badgeClass}`}>
           {match.match_score.toFixed(1)}%
         </span>
       </div>
 
-      <div className="space-y-2 text-sm text-gray-600 mb-4">
-        <p>💰 {match.salary_range}</p>
+      <div className="mb-4 space-y-2 text-sm text-slate-600">
+        <p>Salario: {match.salary_range}</p>
         {match.work_modality && (
           <p>{modalityLabels[match.work_modality] || match.work_modality}</p>
         )}
-        {match.location && <p>📍 {match.location}</p>}
+        {match.location && <p>Ubicacion: {match.location}</p>}
       </div>
 
       {/* Skills */}
@@ -56,7 +58,7 @@ export default function MatchCard({ match, onApply, badgeClass }: MatchCardProps
                   key={skill}
                   className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs"
                 >
-                  ✓ {skill}
+                  {skill}
                 </span>
               ))}
             </div>
@@ -84,12 +86,16 @@ export default function MatchCard({ match, onApply, badgeClass }: MatchCardProps
         )}
       </div>
 
-      <button
+      <HoverButton
         onClick={() => onApply(match.vacancy_id)}
-        className="w-full btn-primary"
+        className="w-full rounded-xl py-3 text-lg"
+        glowColor="#38bdf8"
+        backgroundColor="#061638"
+        textColor="#ffffff"
+        hoverTextColor="#bfdbfe"
       >
         Postularme
-      </button>
+      </HoverButton>
     </div>
   );
 }
