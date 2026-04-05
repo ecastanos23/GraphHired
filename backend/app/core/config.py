@@ -4,6 +4,10 @@ Environment variables and settings management
 """
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[3]
+BACKEND_DIR = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
@@ -37,8 +41,13 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "GraphHired API"
     
     class Config:
-        env_file = ".env"
+        env_file = (
+            str(ROOT_DIR / ".env"),
+            str(BACKEND_DIR / ".env"),
+            ".env",
+        )
         case_sensitive = True
+        extra = "ignore"
 
 @lru_cache()
 def get_settings() -> Settings:
