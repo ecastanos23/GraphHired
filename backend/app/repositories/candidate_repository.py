@@ -64,6 +64,16 @@ class CandidateRepository:
         self.db.commit()
         self.db.refresh(candidate)
         return candidate
+
+    def update_cv_embedding(self, candidate_id: int, embedding: List[float]) -> bool:
+        """Update only cv_embedding for a candidate."""
+        candidate = self.get_by_id(candidate_id)
+        if not candidate:
+            return False
+
+        candidate.cv_embedding = embedding
+        self.db.commit()
+        return True
     
     def delete(self, candidate_id: int) -> bool:
         """Delete candidate"""

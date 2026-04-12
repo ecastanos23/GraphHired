@@ -20,6 +20,21 @@ class MatchingService:
     """Facade that switches between SQLite keyword matching and pgvector matching."""
 
     @staticmethod
+    def _normalize_model_name(model_name: str) -> str:
+        raw = (model_name or "").strip()
+        if not raw:
+            return "models/gemini-embedding-001"
+        if raw in {"text-embedding-004", "models/text-embedding-004"}:
+            return "models/gemini-embedding-001"
+        if raw.startswith("models/"):
+            return raw
+        return f"models/{raw}"
+
+    @staticmethod
+    def _resolve_embedding_model_name() -> str:
+        return MatchingService._normalize_model_name(settings.GEMINI_EMBEDDING_MODEL)
+
+    @staticmethod
     async def get_best_matches(
         db: AsyncSession,
         candidate: Candidate,
@@ -122,7 +137,7 @@ class MatchingService:
                 raise ValueError("Candidate has no CV text to generate an embedding")
 
             embeddings = GoogleGenerativeAIEmbeddings(
-                model=settings.GEMINI_EMBEDDING_MODEL,
+                model=MatchingService._resolve_embedding_model_name(),
                 google_api_key=settings.GEMINI_API_KEY,
             )
             clean_cv_text = bleach.clean(candidate.cv_text, tags=[], attributes={}, strip=True).strip()
@@ -134,7 +149,7 @@ class MatchingService:
             await db.commit()
 
         embeddings = GoogleGenerativeAIEmbeddings(
-            model=settings.GEMINI_EMBEDDING_MODEL,
+            model=MatchingService._resolve_embedding_model_name(),
             google_api_key=settings.GEMINI_API_KEY,
         )
 

@@ -3,7 +3,7 @@ Candidates API Routes
 CV upload, profile management, and candidate operations
 HU 01 - Entrada/Proceso/Salida del sistema
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from decimal import Decimal
@@ -12,7 +12,7 @@ import io
 import os
 import tempfile
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.core.security import sanitize_text, sanitize_email, validate_file_type
 from app.models.schemas import (
     CandidateCreate, CandidateUpdate, CandidateResponse, 
@@ -23,11 +23,26 @@ from app.repositories.candidate_repository import CandidateRepository
 from app.repositories.vacancy_repository import VacancyRepository
 from app.agents.profile_agent import analyze_profile, generate_colombia_job_dataset
 from app.agents.cv_profile_graph import cv_profile_graph
+from app.services.embedding_service import EmbeddingService
 
 router = APIRouter()
 
 
 AUTO_DATASET_MARKER = "[AUTO_DATASET_CANDIDATE:"
+
+
+def _generate_and_store_candidate_embedding(candidate_id: int, cv_text: str | None) -> None:
+    """Background task for embedding generation/persistence."""
+    embedding = EmbeddingService.generate_embedding(cv_text or "")
+    if embedding is None:
+        return
+
+    db = SessionLocal()
+    try:
+        repo = CandidateRepository(db)
+        repo.update_cv_embedding(candidate_id=candidate_id, embedding=embedding)
+    finally:
+        db.close()
 
 
 def _salary_string_to_decimals(salary_range: str) -> tuple[Decimal, Decimal]:
@@ -172,7 +187,11 @@ async def analyze_cv_pdf_with_graph(
             os.unlink(temp_file_path)
 
 @router.post("/", response_model=CandidateResponse)
-async def create_candidate(data: CandidateCreate, db: Session = Depends(get_db)):
+async def create_candidate(
+    data: CandidateCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """Register a new candidate"""
     repo = CandidateRepository(db)
     
@@ -187,11 +206,16 @@ async def create_candidate(data: CandidateCreate, db: Session = Depends(get_db))
         data.cv_text = sanitize_text(data.cv_text)
     
     candidate = repo.create(data)
+    background_tasks.add_task(_generate_and_store_candidate_embedding, candidate.id, candidate.cv_text)
     return candidate
 
 @router.post("/upload-cv", response_model=CandidateResponse)
 @router.post("/upload_cv", response_model=CandidateResponse, include_in_schema=False)
-async def upload_cv_with_expectations(data: CVUpload, db: Session = Depends(get_db)):
+async def upload_cv_with_expectations(
+    data: CVUpload,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """
     Upload CV with candidate expectations (salary, modality, location)
     HU 01 - 5.2 Proceso: Validar e invocar el agente de perfil
@@ -257,6 +281,7 @@ async def upload_cv_with_expectations(data: CVUpload, db: Session = Depends(get_
         
         db.commit()
         db.refresh(existing)
+        background_tasks.add_task(_generate_and_store_candidate_embedding, existing.id, existing.cv_text)
         return existing
     else:
         # Create new candidate
@@ -293,6 +318,7 @@ async def upload_cv_with_expectations(data: CVUpload, db: Session = Depends(get_
         )
         
         db.refresh(candidate)
+        background_tasks.add_task(_generate_and_store_candidate_embedding, candidate.id, candidate.cv_text)
         return candidate
 
 @router.get("", response_model=List[CandidateResponse])
@@ -341,6 +367,7 @@ async def analyze_candidate_profile(candidate_id: int, db: Session = Depends(get
 async def update_candidate(
     candidate_id: int, 
     data: CandidateUpdate, 
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """Update candidate information"""
@@ -354,6 +381,10 @@ async def update_candidate(
     candidate = repo.update(candidate_id, data)
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
+
+    if data.cv_text is not None:
+        background_tasks.add_task(_generate_and_store_candidate_embedding, candidate.id, candidate.cv_text)
+
     return candidate
 
 @router.delete("/{candidate_id}")
