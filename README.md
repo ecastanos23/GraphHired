@@ -25,6 +25,7 @@ GraphHired/
     ├── requirements.txt         
     ├── main.py                  # Punto de entrada de FastAPI
     └── Dockerfile
+```
 ## Getting Started
 
 ### Prerequisites
