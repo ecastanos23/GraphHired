@@ -5,7 +5,8 @@ GraphHired project with Clean Architecture.
 
 ## Project Structure
 GraphHired/
- ` ` `
+```text
+GraphHired/
 ├── docker-compose.yml           # Orquestación de infraestructura (Vista Física)
 ├── frontend/                    # Capa de Presentación (Client)
 │   ├── src/
@@ -24,7 +25,6 @@ GraphHired/
     ├── requirements.txt         
     ├── main.py                  # Punto de entrada de FastAPI
     └── Dockerfile
- ` ` `
 ## Getting Started
 
 ### Prerequisites
