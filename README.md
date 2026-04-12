@@ -4,25 +4,26 @@
 GraphHired project with Clean Architecture.
 
 ## Project Structure
-```
-graphhired/
-├── backend/
-│   └── app/
-│       ├── agents/
-│       ├── api/
-│       ├── core/
-│       ├── models/
-│       └── repositories/
-├── frontend/
-│   ├── app/
-│   ├── components/
-│   ├── hooks/
-│   └── public/
-├── .github/
-│   └── ISSUE_TEMPLATE/
-├── docker-compose.yml
-└── README.md
-```
+GraphHired/
+
+├── docker-compose.yml           # Orquestación de infraestructura (Vista Física)
+├── frontend/                    # Capa de Presentación (Client)
+│   ├── src/
+│   │   ├── app/                 # Rutas de Next.js (Dashboard, Formularios)
+│   │   ├── components/          # Componentes de UI reutilizables (TailwindCSS)
+│   │   └── lib/                 # Clientes HTTP para consumir la API
+│   ├── package.json             
+│   └── Dockerfile               
+└── backend/                     # Capa de Lógica y Datos (Server)
+    ├── app/
+    │   ├── api/                 # Capa de Presentación del API
+    │   │   └── routes/          # Endpoints (ej. candidates.py)
+    │   ├── core/                # Configuración global y conexión a DB (database.py)
+    │   ├── models/              # Modelos de SQLAlchemy (entities.py)
+    │   └── services/            # Lógica de negocio e IA (embedding_service.py)
+    ├── requirements.txt         
+    ├── main.py                  # Punto de entrada de FastAPI
+    └── Dockerfile
 
 ## Getting Started
 
