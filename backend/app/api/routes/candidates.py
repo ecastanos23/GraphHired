@@ -295,7 +295,7 @@ async def upload_cv_with_expectations(data: CVUpload, db: Session = Depends(get_
         db.refresh(candidate)
         return candidate
 
-@router.get("/", response_model=List[CandidateResponse])
+@router.get("", response_model=List[CandidateResponse])
 async def get_candidates(
     skip: int = 0, 
     limit: int = 100, 
