@@ -1,10 +1,11 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useApi } from '@/hooks/useApi';
 import MatchCard from '@/components/MatchCard';
 import NotificationToast from '@/components/NotificationToast';
+import { HoverButton } from '@/components/ui/hover-glow-button';
 
 interface Match {
   vacancy_id: number;
@@ -16,6 +17,8 @@ interface Match {
   location: string | null;
   matching_skills: string[];
   missing_skills: string[];
+  score_breakdown?: Record<string, number>;
+  match_explanation?: string;
 }
 
 interface MatchingResponse {
@@ -29,8 +32,6 @@ interface Candidate {
   id: number;
   email: string;
   full_name: string;
-  phone?: string | null;
-  cv_text?: string | null;
   expected_salary?: string | null;
   work_modality?: string | null;
   location?: string | null;
@@ -38,25 +39,74 @@ interface Candidate {
   experience_years?: number;
 }
 
+interface Application {
+  id: number;
+  candidate_id: number;
+  vacancy_id: number;
+  match_score: string | number | null;
+  status: string;
+  evidence?: Record<string, any> | null;
+  next_steps: string[];
+  agent_reason?: string | null;
+  applied_at: string;
+  vacancy_title?: string | null;
+  company?: string | null;
+  appointments?: Appointment[];
+}
+
+interface Appointment {
+  id: number;
+  application_id: number;
+  title: string;
+  description?: string | null;
+  location?: string | null;
+  start_at: string;
+  end_at: string;
+  google_calendar_url: string;
+}
+
+interface AgentEvent {
+  id: number;
+  agent_name: string;
+  action: string;
+  reason: string;
+  input_summary?: string | null;
+  output_summary?: string | null;
+  created_at: string;
+}
+
 function DashboardContent() {
   const searchParams = useSearchParams();
   const candidateIdParam = searchParams.get('candidateId');
-  
   const { get, post, loading } = useApi();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<number | null>(
     candidateIdParam ? parseInt(candidateIdParam) : null
   );
   const [matches, setMatches] = useState<MatchingResponse | null>(null);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [trace, setTrace] = useState<AgentEvent[]>([]);
+  const [appointmentStarts, setAppointmentStarts] = useState<Record<number, string>>({});
   const [notification, setNotification] = useState<{show: boolean; message: string; type: 'success' | 'error'}>({
     show: false,
     message: '',
-    type: 'success'
+    type: 'success',
   });
 
-  // Load candidates on mount
   useEffect(() => {
-    const fetchCandidates = async () => {
+    const fetchInitialData = async () => {
+      try {
+        const token = localStorage.getItem('graphhired_token');
+        if (token && !candidateIdParam) {
+          const me = await get<{ candidate_id: number | null }>('/api/auth/me');
+          if (me?.candidate_id) {
+            setSelectedCandidate(me.candidate_id);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching current user:', err);
+      }
+
       try {
         const data = await get<Candidate[]>('/api/candidates');
         setCandidates(data || []);
@@ -64,13 +114,13 @@ function DashboardContent() {
         console.error('Error fetching candidates:', err);
       }
     };
-    fetchCandidates();
+    void fetchInitialData();
   }, []);
 
-  // Load matches when candidate is selected
   useEffect(() => {
     if (selectedCandidate) {
-      fetchMatches(selectedCandidate);
+      void fetchMatches(selectedCandidate);
+      void fetchProcess(selectedCandidate);
     }
   }, [selectedCandidate]);
 
@@ -83,28 +133,88 @@ function DashboardContent() {
     }
   };
 
+  const fetchProcess = async (candidateId: number) => {
+    try {
+      const apps = await get<Application[]>(`/api/matching/applications/candidate/${candidateId}`);
+      const withAppointments = await Promise.all(
+        (apps || []).map(async (application) => {
+          try {
+            const appointments = await get<Appointment[]>(`/api/applications/${application.id}/appointments`);
+            return { ...application, appointments: appointments || [] };
+          } catch {
+            return { ...application, appointments: [] };
+          }
+        })
+      );
+      setApplications(withAppointments);
+    } catch (err) {
+      console.error('Error fetching applications:', err);
+    }
+
+    try {
+      const events = await get<AgentEvent[]>(`/api/agents/trace?candidate_id=${candidateId}&limit=50`);
+      setTrace(events || []);
+    } catch (err) {
+      console.error('Error fetching trace:', err);
+    }
+  };
+
   const handleApply = async (vacancyId: number) => {
     if (!selectedCandidate) return;
 
     try {
-      await post('/api/matching/apply', {
+      await post<Application>('/api/matching/apply', {
         candidate_id: selectedCandidate,
-        vacancy_id: vacancyId
+        vacancy_id: vacancyId,
       });
-      
       setNotification({
         show: true,
-        message: '¡Postulación exitosa! Tu aplicación ha sido enviada.',
-        type: 'success'
+        message: 'Postulacion simulada guardada con evidencia y proximos pasos.',
+        type: 'success',
       });
-
-      // Refresh matches to update UI
-      fetchMatches(selectedCandidate);
+      await fetchMatches(selectedCandidate);
+      await fetchProcess(selectedCandidate);
     } catch (err: any) {
       setNotification({
         show: true,
         message: err.message || 'Error al postularse',
-        type: 'error'
+        type: 'error',
+      });
+    }
+  };
+
+  const handleSchedule = async (application: Application) => {
+    if (!selectedCandidate) return;
+
+    const selectedStart = appointmentStarts[application.id];
+    const startDate = selectedStart ? new Date(selectedStart) : new Date(Date.now() + 24 * 60 * 60 * 1000);
+    if (!selectedStart) {
+      startDate.setHours(9, 0, 0, 0);
+    }
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+
+    try {
+      const appointment = await post<Appointment>(`/api/applications/${application.id}/appointments`, {
+        start_at: startDate.toISOString(),
+        end_at: endDate.toISOString(),
+        title: `Entrevista con ${application.company || 'empresa'}`,
+        description: `Entrevista para ${application.vacancy_title || 'vacante'} confirmada desde GraphHired.`,
+        location: 'Google Meet',
+      });
+      setNotification({
+        show: true,
+        message: 'Cita agendada. El enlace de Google Calendar quedo listo.',
+        type: 'success',
+      });
+      await fetchProcess(selectedCandidate);
+      if (appointment?.google_calendar_url) {
+        window.open(appointment.google_calendar_url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err: any) {
+      setNotification({
+        show: true,
+        message: err.message || 'No se pudo agendar la cita',
+        type: 'error',
       });
     }
   };
@@ -120,57 +230,45 @@ function DashboardContent() {
 
   return (
     <div className="space-y-8">
-      <NotificationToast 
+      <NotificationToast
         show={notification.show}
         message={notification.message}
         type={notification.type}
-        onClose={() => setNotification(prev => ({ ...prev, show: false }))}
+        onClose={() => setNotification((prev) => ({ ...prev, show: false }))}
       />
 
       <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
-        <div className="bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.25),_transparent_30%),linear-gradient(135deg,_#0f172a_0%,_#111827_50%,_#064e3b_100%)] px-6 py-8 text-white sm:px-8">
+        <div className="bg-[linear-gradient(135deg,_#0f172a_0%,_#111827_50%,_#064e3b_100%)] px-6 py-8 text-white sm:px-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl space-y-4">
-              <div className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-emerald-100">
-                GraphHired Search
-              </div>
-              <div className="space-y-2">
-                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                  Encuentra vacantes que realmente encajan con el perfil
-                </h1>
-                <p className="text-sm leading-6 text-slate-200 sm:text-base">
-                  Explora coincidencias exactas con pgvector o aproximadas en modo local. Elige un candidato y revisa sus resultados en un formato tipo buscador profesional.
-                </p>
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-100">Profile Manager</p>
+              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                Recomendaciones, postulaciones y seguimiento
+              </h1>
+              <p className="text-sm leading-6 text-slate-200 sm:text-base">
+                Cada recomendacion muestra por que la IA eligio esa empresa y cada accion queda trazada por agentes.
+              </p>
             </div>
 
             <div className="w-full max-w-md rounded-3xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
               <label className="mb-2 block text-sm font-medium text-slate-100">Candidato</label>
               <select
                 value={selectedCandidate || ''}
-                onChange={(e) => setSelectedCandidate(e.target.value ? parseInt(e.target.value) : null)}
+                onChange={(event) => setSelectedCandidate(event.target.value ? parseInt(event.target.value) : null)}
                 className="w-full rounded-2xl border border-white/20 bg-white/95 px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
               >
                 <option value="">Seleccionar candidato...</option>
-                {candidates.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.full_name} ({c.email})
+                {candidates.map((candidate) => (
+                  <option key={candidate.id} value={candidate.id}>
+                    {candidate.full_name} ({candidate.email})
                   </option>
                 ))}
               </select>
               {selectedCandidateData && (
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-100/90">
-                  {selectedCandidateData.work_modality && (
-                    <span className="rounded-full bg-white/10 px-3 py-1">{selectedCandidateData.work_modality}</span>
-                  )}
-                  {selectedCandidateData.location && (
-                    <span className="rounded-full bg-white/10 px-3 py-1">{selectedCandidateData.location}</span>
-                  )}
-                  {typeof selectedCandidateData.experience_years === 'number' && (
-                    <span className="rounded-full bg-white/10 px-3 py-1">
-                      {selectedCandidateData.experience_years} años exp.
-                    </span>
-                  )}
+                  {selectedCandidateData.work_modality && <span className="rounded-full bg-white/10 px-3 py-1">{selectedCandidateData.work_modality}</span>}
+                  {selectedCandidateData.location && <span className="rounded-full bg-white/10 px-3 py-1">{selectedCandidateData.location}</span>}
+                  <span className="rounded-full bg-white/10 px-3 py-1">{selectedCandidateData.experience_years || 0} anos exp.</span>
                 </div>
               )}
             </div>
@@ -181,8 +279,11 @@ function DashboardContent() {
       {!selectedCandidate && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
           <p className="text-amber-900">
-            Selecciona un candidato para ver las vacantes recomendadas, o{' '}
-            <a href="/upload" className="font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4">sube tu CV</a> primero.
+            Selecciona un candidato o{' '}
+            <a href="/register" className="font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4">
+              registrate con tu CV
+            </a>
+            .
           </p>
         </div>
       )}
@@ -190,56 +291,33 @@ function DashboardContent() {
       {selectedCandidate && loading && (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
           <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-emerald-600"></div>
-          <p className="mt-4 text-slate-600">Calculando matches...</p>
+          <p className="mt-4 text-slate-600">Procesando agentes...</p>
         </div>
       )}
 
-      {selectedCandidate && matches && !loading && (
+      {selectedCandidate && matches && (
         <div className="space-y-8">
-          <section className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Perfil activo</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-900">{matches.candidate_name}</h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                  {matches.total_matches} vacantes encontradas
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-slate-900 px-4 py-3 text-right text-white">
-                  <p className="text-xs uppercase tracking-wide text-slate-300">Mejor match</p>
-                  <p className="text-3xl font-semibold text-emerald-300">
-                    {matches.matches[0]?.match_score.toFixed(1) || 0}%
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Vacantes</p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">{matches.total_matches}</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Selector</p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">Activo</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Modo</p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">Semántico</p>
-                </div>
-              </div>
+          <section className="grid gap-4 lg:grid-cols-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Vacantes</p>
+              <p className="mt-1 text-3xl font-semibold text-slate-900">{matches.total_matches}</p>
             </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-slate-50 p-6 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Lectura rápida</p>
-              <p className="mt-3 text-sm leading-6 text-slate-700">
-                La búsqueda combina tu perfil con descripciones de vacantes y ordena por afinidad. El bloque semántico usa embeddings cuando están disponibles.
-              </p>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Mejor match</p>
+              <p className="mt-1 text-3xl font-semibold text-emerald-700">{matches.matches[0]?.match_score.toFixed(1) || 0}%</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Postulaciones</p>
+              <p className="mt-1 text-3xl font-semibold text-slate-900">{applications.length}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Eventos agente</p>
+              <p className="mt-1 text-3xl font-semibold text-slate-900">{trace.length}</p>
             </div>
           </section>
 
           {matches.matches.length > 0 && (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {matches.matches.map((match) => (
                 <MatchCard
                   key={match.vacancy_id}
@@ -248,8 +326,120 @@ function DashboardContent() {
                   badgeClass={getScoreBadgeClass(match.match_score)}
                 />
               ))}
-            </div>
+            </section>
           )}
+
+          <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Proceso</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-slate-900">Postulaciones y citas</h2>
+                </div>
+                <HoverButton
+                  onClick={() => selectedCandidate && void fetchProcess(selectedCandidate)}
+                  className="rounded-full px-4 py-2 text-sm"
+                  glowColor="#67e8f9"
+                  backgroundColor="#0f172a"
+                  textColor="#ffffff"
+                  hoverTextColor="#67e8f9"
+                >
+                  Refrescar
+                </HoverButton>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                {applications.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+                    Todavia no hay postulaciones. Usa el boton Postularme en una vacante recomendada.
+                  </div>
+                )}
+
+                {applications.map((application) => (
+                  <article key={application.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold text-slate-900">{application.vacancy_title}</h3>
+                        <p className="text-sm text-slate-600">{application.company}</p>
+                      </div>
+                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                        {application.status}
+                      </span>
+                    </div>
+                    {application.agent_reason && <p className="mt-3 text-sm leading-6 text-slate-700">{application.agent_reason}</p>}
+                    {application.next_steps.length > 0 && (
+                      <ul className="mt-3 space-y-1 text-sm text-slate-600">
+                        {application.next_steps.map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                      <label className="block text-sm font-medium text-slate-700">
+                        Fecha sugerida de entrevista
+                        <input
+                          type="datetime-local"
+                          value={appointmentStarts[application.id] || ''}
+                          onChange={(event) => setAppointmentStarts({ ...appointmentStarts, [application.id]: event.target.value })}
+                          className="mt-1 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-200/60"
+                        />
+                      </label>
+                      <HoverButton
+                        onClick={() => void handleSchedule(application)}
+                        className="rounded-2xl px-4 py-3 text-sm font-semibold"
+                        glowColor="#34d399"
+                        backgroundColor="#10b981"
+                        textColor="#ffffff"
+                        hoverTextColor="#d1fae5"
+                      >
+                        Agendar cita
+                      </HoverButton>
+                    </div>
+                    {application.appointments && application.appointments.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        {application.appointments.map((appointment) => (
+                          <a
+                            key={appointment.id}
+                            href={appointment.google_calendar_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                          >
+                            Agregar a Google Calendar: {new Date(appointment.start_at).toLocaleString()}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Trazabilidad</p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-900">Que hizo cada agente</h2>
+              <div className="mt-6 space-y-4">
+                {trace.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+                    La trazabilidad aparecera cuando ejecutes onboarding, matches o postulaciones.
+                  </div>
+                )}
+                {trace.map((event) => (
+                  <article key={event.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{event.agent_name}</p>
+                        <p className="text-sm text-emerald-700">{event.action}</p>
+                      </div>
+                      <span className="text-xs text-slate-500">{new Date(event.created_at).toLocaleTimeString()}</span>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">{event.reason}</p>
+                    {event.output_summary && <p className="mt-2 text-xs text-slate-500">{event.output_summary}</p>}
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
         </div>
       )}
     </div>

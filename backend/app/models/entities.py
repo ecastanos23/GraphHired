@@ -25,6 +25,19 @@ class Log(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+class User(Base):
+    """Application user for candidate login."""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), unique=True, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    candidate = relationship("Candidate", back_populates="user")
+
+
 class Candidate(Base):
     """Candidate/Job seeker model"""
     __tablename__ = "candidates"
@@ -44,6 +57,7 @@ class Candidate(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
+    user = relationship("User", back_populates="candidate", uselist=False)
     applications = relationship("Application", back_populates="candidate", cascade="all, delete-orphan")
 
 
@@ -77,9 +91,45 @@ class Application(Base):
     candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False)
     vacancy_id = Column(Integer, ForeignKey("vacancies.id", ondelete="CASCADE"), nullable=False)
     match_score = Column(DECIMAL(5, 2), nullable=True)
-    status = Column(String(50), default="pending")
+    status = Column(String(50), default="postulado")
+    evidence = Column(JSON, default=dict)
+    next_steps = Column(JSON, default=list)
+    agent_reason = Column(Text, nullable=True)
     applied_at = Column(DateTime, server_default=func.now())
 
     # Relationships
     candidate = relationship("Candidate", back_populates="applications")
     vacancy = relationship("Vacancy", back_populates="applications")
+    appointments = relationship("Appointment", back_populates="application", cascade="all, delete-orphan")
+
+
+class Appointment(Base):
+    """Interview or follow-up appointment linked to an application."""
+    __tablename__ = "appointments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    application_id = Column(Integer, ForeignKey("applications.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    location = Column(String(255), nullable=True)
+    start_at = Column(DateTime, nullable=False)
+    end_at = Column(DateTime, nullable=False)
+    google_calendar_url = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    application = relationship("Application", back_populates="appointments")
+
+
+class AgentEvent(Base):
+    """Trace event for agentic decisions and workflow steps."""
+    __tablename__ = "agent_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=True)
+    application_id = Column(Integer, ForeignKey("applications.id", ondelete="CASCADE"), nullable=True)
+    agent_name = Column(String(100), nullable=False)
+    action = Column(String(255), nullable=False)
+    reason = Column(Text, nullable=False)
+    input_summary = Column(Text, nullable=True)
+    output_summary = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())

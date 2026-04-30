@@ -5,13 +5,16 @@ FastAPI application with Clean Architecture
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from sqlalchemy import text
 
 from app.core.config import settings
-from app.api.routes import logs, candidates, vacancies, matching
+from app.core.database import SessionLocal, init_db
+from app.api.routes import logs, candidates, vacancies, matching, auth, agents, applications
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler"""
+    init_db()
     print("🚀 Starting GraphHired API...")
     yield
     print("👋 Shutting down GraphHired API...")
@@ -34,9 +37,12 @@ app.add_middleware(
 
 # Include routers
 app.include_router(logs.router, prefix="/api/logs", tags=["Logs - PoC"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(candidates.router, prefix="/api/candidates", tags=["Candidates"])
 app.include_router(vacancies.router, prefix="/api/vacancies", tags=["Vacancies"])
 app.include_router(matching.router, prefix="/api/matching", tags=["Matching"])
+app.include_router(applications.router, prefix="/api/applications", tags=["Applications"])
+app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])
 
 @app.get("/", tags=["Health"])
 async def root():
@@ -50,10 +56,22 @@ async def root():
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Detailed health check"""
+    database_status = "connected"
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+    except Exception as exc:
+        database_status = f"error: {exc.__class__.__name__}"
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
     return {
-        "status": "healthy",
-        "database": "connected",
-        "ai_service": "ready"
+        "status": "healthy" if database_status == "connected" else "degraded",
+        "database": database_status,
+        "ai_service": "ready" if settings.GEMINI_API_KEY else "missing_api_key"
     }
 
 @app.get("/health/ai", tags=["Health"])

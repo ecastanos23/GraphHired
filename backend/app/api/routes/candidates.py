@@ -16,13 +16,15 @@ from app.core.database import get_db, SessionLocal
 from app.core.security import sanitize_text, sanitize_email, validate_file_type
 from app.models.schemas import (
     CandidateCreate, CandidateUpdate, CandidateResponse, 
-    CVUpload, ProfileAnalysis, CVGraphAnalysisResponse, VacancyCreate
+    CVUpload, ProfileAnalysis, CVGraphAnalysisResponse, VacancyCreate, ParsedCVResponse
 )
 from app.models.entities import Vacancy
 from app.repositories.candidate_repository import CandidateRepository
 from app.repositories.vacancy_repository import VacancyRepository
+from app.repositories.agent_event_repository import AgentEventRepository
 from app.agents.profile_agent import analyze_profile, generate_colombia_job_dataset
 from app.agents.cv_profile_graph import cv_profile_graph
+from app.agents.vacancy_agent import sync_curated_market_vacancies
 from app.services.embedding_service import EmbeddingService
 
 router = APIRouter()
@@ -43,6 +45,78 @@ def _generate_and_store_candidate_embedding(candidate_id: int, cv_text: str | No
         repo.update_cv_embedding(candidate_id=candidate_id, embedding=embedding)
     finally:
         db.close()
+
+
+def _clean_optional_profile_value(value):
+    if value is None:
+        return None
+    text = sanitize_text(str(value))
+    if not text or text.strip().lower() in {"unknown", "n/a", "na", "none", "null", "no disponible"}:
+        return None
+    return text
+
+
+@router.post("/parse-cv-pdf", response_model=ParsedCVResponse)
+async def parse_cv_pdf_for_registration(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Parse a CV PDF before registration and return editable profile fields."""
+    if not file.filename or not validate_file_type(file.filename, ["pdf"]):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+
+    raw_content = await file.read()
+    if not raw_content:
+        raise HTTPException(status_code=400, detail="Uploaded PDF is empty")
+
+    temp_file_path = ""
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+            temp_file.write(raw_content)
+            temp_file_path = temp_file.name
+
+        graph_result = cv_profile_graph.invoke(
+            {
+                "raw_pdf_path": temp_file_path,
+                "extracted_text": "",
+                "structured_data": {},
+                "error": None,
+            }
+        )
+
+        if graph_result.get("error"):
+            raise HTTPException(status_code=400, detail=graph_result["error"])
+
+        structured_data = graph_result.get("structured_data", {}) or {}
+        clean_cv_text = sanitize_text(graph_result.get("extracted_text", ""))
+        skills = [sanitize_text(str(skill)) for skill in structured_data.get("skills", []) if skill]
+        profile_gaps = [sanitize_text(str(gap)) for gap in structured_data.get("profile_gaps", []) if gap]
+        recommended_roles = [sanitize_text(str(role)) for role in structured_data.get("recommended_roles", []) if role]
+
+        AgentEventRepository(db).create(
+            agent_name="Agente de Perfil",
+            action="Analizo CV PDF",
+            reason="Se extrajo informacion estructurada para autollenar el registro del candidato.",
+            input_summary=f"filename={file.filename}, bytes={len(raw_content)}",
+            output_summary=f"skills={skills[:5]}, gaps={profile_gaps[:3]}",
+        )
+
+        return ParsedCVResponse(
+            full_name=_clean_optional_profile_value(structured_data.get("full_name")),
+            email=_clean_optional_profile_value(structured_data.get("email")),
+            phone=_clean_optional_profile_value(structured_data.get("phone")),
+            skills=skills,
+            experience_years=int(structured_data.get("experience_years", 0) or 0),
+            education=structured_data.get("education"),
+            summary=structured_data.get("summary", ""),
+            profile_gaps=profile_gaps,
+            recommended_roles=recommended_roles,
+            cv_text=clean_cv_text,
+            extracted_text_length=len(clean_cv_text),
+        )
+    finally:
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.unlink(temp_file_path)
 
 
 def _salary_string_to_decimals(salary_range: str) -> tuple[Decimal, Decimal]:
@@ -271,7 +345,7 @@ async def upload_cv_with_expectations(
         existing.experience_years = profile["experience_years"]
 
         # Keep the dashboard populated with realistic and profile-aware opportunities.
-        _sync_generated_market_vacancies(
+        sync_curated_market_vacancies(
             db=db,
             candidate_id=existing.id,
             cv_text=clean_cv,
@@ -309,7 +383,7 @@ async def upload_cv_with_expectations(
         )
 
         # Keep the dashboard populated with realistic and profile-aware opportunities.
-        _sync_generated_market_vacancies(
+        sync_curated_market_vacancies(
             db=db,
             candidate_id=candidate.id,
             cv_text=clean_cv,

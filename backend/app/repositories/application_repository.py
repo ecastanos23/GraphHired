@@ -13,13 +13,24 @@ class ApplicationRepository:
     def __init__(self, db: Session):
         self.db = db
     
-    def create(self, candidate_id: int, vacancy_id: int, match_score: Decimal = None) -> Application:
+    def create(
+        self,
+        candidate_id: int,
+        vacancy_id: int,
+        match_score: Decimal = None,
+        evidence: dict | None = None,
+        next_steps: list[str] | None = None,
+        agent_reason: str | None = None,
+    ) -> Application:
         """Create a new application"""
         application = Application(
             candidate_id=candidate_id,
             vacancy_id=vacancy_id,
             match_score=match_score,
-            status="pending"
+            status="postulado",
+            evidence=evidence or {},
+            next_steps=next_steps or [],
+            agent_reason=agent_reason,
         )
         self.db.add(application)
         self.db.commit()

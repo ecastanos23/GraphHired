@@ -9,6 +9,7 @@ interface UseApiReturn {
   error: string | null;
   get: <T>(endpoint: string) => Promise<T | null>;
   post: <T>(endpoint: string, data: any) => Promise<T | null>;
+  postForm: <T>(endpoint: string, data: FormData) => Promise<T | null>;
   put: <T>(endpoint: string, data: any) => Promise<T | null>;
   del: (endpoint: string) => Promise<boolean>;
 }
@@ -25,9 +26,12 @@ export function useApi(): UseApiReturn {
     setError(null);
 
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('graphhired_token') : null;
+      const isFormData = options.body instanceof FormData;
       const response = await fetch(`${API_URL}${endpoint}`, {
         headers: {
-          'Content-Type': 'application/json',
+          ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...options.headers,
         },
         ...options,
@@ -35,7 +39,10 @@ export function useApi(): UseApiReturn {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `HTTP error ${response.status}`);
+        const detail = typeof errorData.detail === 'string'
+          ? errorData.detail
+          : JSON.stringify(errorData.detail || errorData);
+        throw new Error(detail || `HTTP error ${response.status}`);
       }
 
       const data = await response.json();
@@ -60,6 +67,13 @@ export function useApi(): UseApiReturn {
     });
   }, []);
 
+  const postForm = useCallback(<T>(endpoint: string, data: FormData): Promise<T | null> => {
+    return handleRequest<T>(endpoint, {
+      method: 'POST',
+      body: data,
+    });
+  }, []);
+
   const put = useCallback(<T>(endpoint: string, data: any): Promise<T | null> => {
     return handleRequest<T>(endpoint, {
       method: 'PUT',
@@ -72,5 +86,5 @@ export function useApi(): UseApiReturn {
     return true;
   }, []);
 
-  return { loading, error, get, post, put, del };
+  return { loading, error, get, post, postForm, put, del };
 }

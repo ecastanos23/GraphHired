@@ -22,6 +22,14 @@ from app.repositories.candidate_repository import CandidateRepository
 from app.repositories.vacancy_repository import VacancyRepository
 from app.repositories.application_repository import ApplicationRepository
 from app.agents.matching_agent import match_candidate_to_vacancy
+from app.agents.application_agent import (
+    build_application_evidence,
+    build_application_reason,
+    build_followup_steps,
+    build_match_explanation,
+    build_score_breakdown,
+)
+from app.repositories.agent_event_repository import AgentEventRepository
 from app.services.matching import MatchingService
 
 router = APIRouter()
@@ -212,12 +220,23 @@ async def get_matches_for_candidate(
                 work_modality=vacancy.work_modality,
                 location=vacancy.location,
                 matching_skills=result["matching_skills"],
-                missing_skills=result["missing_skills"]
+                missing_skills=result["missing_skills"],
+                score_breakdown=build_score_breakdown(result),
+                match_explanation=build_match_explanation(candidate, vacancy, result),
             ))
     
     # Sort by score descending and limit
     matches.sort(key=lambda x: x.match_score, reverse=True)
     matches = matches[:limit]
+
+    AgentEventRepository(db).create(
+        candidate_id=candidate_id,
+        agent_name="Agente de Matching",
+        action="Calculo recomendaciones explicables",
+        reason="Se compararon habilidades, experiencia, salario y modalidad para ordenar vacantes por afinidad.",
+        input_summary=f"candidate={candidate.full_name}, vacancies={len(vacancies)}",
+        output_summary=f"matches={len(matches)}, top={matches[0].company if matches else 'sin resultados'}",
+    )
     
     return MatchingResponse(
         candidate_id=candidate_id,
@@ -268,11 +287,38 @@ async def apply_to_vacancy(data: ApplicationCreate, db: Session = Depends(get_db
         vacancy_location=vacancy.location
     )
     
+    evidence = build_application_evidence(candidate, vacancy, result)
+    next_steps = build_followup_steps(vacancy)
+    agent_reason = build_application_reason(vacancy, result)
+
     # Create application
     application = application_repo.create(
         candidate_id=data.candidate_id,
         vacancy_id=data.vacancy_id,
-        match_score=Decimal(str(result["total_score"]))
+        match_score=Decimal(str(result["total_score"])),
+        evidence=evidence,
+        next_steps=next_steps,
+        agent_reason=agent_reason,
+    )
+
+    AgentEventRepository(db).create(
+        candidate_id=candidate.id,
+        application_id=application.id,
+        agent_name="Agente de Postulacion",
+        action="Simulo postulacion y guardo evidencia",
+        reason=agent_reason,
+        input_summary=f"candidate={candidate.full_name}, vacancy={vacancy.title}",
+        output_summary=f"status={application.status}, evidence_match={evidence.get('match_score')}",
+    )
+
+    AgentEventRepository(db).create(
+        candidate_id=candidate.id,
+        application_id=application.id,
+        agent_name="Agente de Seguimiento",
+        action="Genero proximos pasos",
+        reason="La postulacion necesita seguimiento para no perder timing en el proceso.",
+        input_summary=f"application_id={application.id}",
+        output_summary="; ".join(next_steps[:2]),
     )
     
     return ApplicationResponse(
@@ -281,6 +327,9 @@ async def apply_to_vacancy(data: ApplicationCreate, db: Session = Depends(get_db
         vacancy_id=application.vacancy_id,
         match_score=application.match_score,
         status=application.status,
+        evidence=application.evidence,
+        next_steps=application.next_steps or [],
+        agent_reason=application.agent_reason,
         applied_at=application.applied_at,
         vacancy_title=vacancy.title,
         company=vacancy.company
@@ -300,6 +349,9 @@ async def get_candidate_applications(candidate_id: int, db: Session = Depends(ge
             vacancy_id=app.vacancy_id,
             match_score=app.match_score,
             status=app.status,
+            evidence=app.evidence,
+            next_steps=app.next_steps or [],
+            agent_reason=app.agent_reason,
             applied_at=app.applied_at,
             vacancy_title=app.vacancy.title if app.vacancy else None,
             company=app.vacancy.company if app.vacancy else None
@@ -314,7 +366,7 @@ async def update_application_status(
     db: Session = Depends(get_db)
 ):
     """Update application status"""
-    valid_statuses = ["pending", "reviewed", "interviewed", "accepted", "rejected"]
+    valid_statuses = ["postulado", "en_revision", "entrevista", "descartado", "contratado"]
     if status not in valid_statuses:
         raise HTTPException(
             status_code=400, 

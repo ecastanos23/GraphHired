@@ -12,6 +12,8 @@ interface Match {
   location: string | null;
   matching_skills: string[];
   missing_skills: string[];
+  score_breakdown?: Record<string, number>;
+  match_explanation?: string;
 }
 
 interface MatchCardProps {
@@ -46,6 +48,24 @@ export default function MatchCard({ match, onApply, badgeClass }: MatchCardProps
         )}
         {match.location && <p>Ubicacion: {match.location}</p>}
       </div>
+
+      {match.match_explanation && (
+        <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">
+          <p className="font-semibold">Por que la IA eligio esta empresa</p>
+          <p className="mt-1">{match.match_explanation}</p>
+        </div>
+      )}
+
+      {match.score_breakdown && (
+        <div className="mb-4 grid grid-cols-2 gap-2 text-xs">
+          {Object.entries(match.score_breakdown).map(([key, value]) => (
+            <div key={key} className="rounded-xl bg-slate-50 px-3 py-2">
+              <p className="capitalize text-slate-500">{key}</p>
+              <p className="text-base font-semibold text-slate-900">{Number(value).toFixed(0)}%</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Skills */}
       <div className="mb-4">

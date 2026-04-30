@@ -143,7 +143,7 @@ export default function PoCPage() {
               textColor="#ffffff"
               hoverTextColor="#d1fae5"
             >
-              {loading ? 'Procesando...' : 'Procesar con LangGraph'}
+              {loading ? 'Procesando...' : 'Procesar'}
             </HoverButton>
           </form>
 

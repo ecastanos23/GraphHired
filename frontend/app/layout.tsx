@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'GraphHired - AI Job Matching',
-  description: 'Find your perfect job match with AI-powered recommendations',
+  title: 'GraphHired by Magneto - AI Job Matching',
+  description: 'Profile Manager agentico by Magneto para recomendaciones laborales con IA',
 }
 
 export default function RootLayout({
@@ -21,9 +21,11 @@ export default function RootLayout({
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#064e3b_100%)] text-sm font-semibold text-emerald-200 shadow-lg shadow-emerald-900/20">
                   GH
                 </span>
-                <span>
+                <span className="min-w-0">
                   <span className="block text-lg font-semibold tracking-tight text-slate-900">GraphHired</span>
-                  <span className="block text-xs font-medium uppercase tracking-[0.22em] text-emerald-700">Buscador IA</span>
+                  <span className="mt-0.5 block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                    Buscador IA by <span className="text-slate-900">Magneto</span>
+                  </span>
                 </span>
               </a>
 
@@ -33,6 +35,18 @@ export default function RootLayout({
                   className="whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
                 >
                   Inicio
+                </a>
+                <a
+                  href="/register"
+                  className="whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
+                >
+                  Registro
+                </a>
+                <a
+                  href="/login"
+                  className="whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
+                >
+                  Login
                 </a>
                 <a
                   href="/upload"

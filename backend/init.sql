@@ -49,9 +49,47 @@ CREATE TABLE IF NOT EXISTS applications (
     candidate_id INTEGER REFERENCES candidates(id) ON DELETE CASCADE,
     vacancy_id INTEGER REFERENCES vacancies(id) ON DELETE CASCADE,
     match_score DECIMAL(5,2),
-    status VARCHAR(50) DEFAULT 'pending',
+    status VARCHAR(50) DEFAULT 'postulado',
+    evidence JSONB DEFAULT '{}',
+    next_steps JSONB DEFAULT '[]',
+    agent_reason TEXT,
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(candidate_id, vacancy_id)
+);
+
+-- Users table for candidate authentication
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    candidate_id INTEGER UNIQUE REFERENCES candidates(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Appointments table for interview/follow-up scheduling
+CREATE TABLE IF NOT EXISTS appointments (
+    id SERIAL PRIMARY KEY,
+    application_id INTEGER REFERENCES applications(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    location VARCHAR(255),
+    start_at TIMESTAMP NOT NULL,
+    end_at TIMESTAMP NOT NULL,
+    google_calendar_url TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Agent trace events for explainability
+CREATE TABLE IF NOT EXISTS agent_events (
+    id SERIAL PRIMARY KEY,
+    candidate_id INTEGER REFERENCES candidates(id) ON DELETE CASCADE,
+    application_id INTEGER REFERENCES applications(id) ON DELETE CASCADE,
+    agent_name VARCHAR(100) NOT NULL,
+    action VARCHAR(255) NOT NULL,
+    reason TEXT NOT NULL,
+    input_summary TEXT,
+    output_summary TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index for vector similarity search
