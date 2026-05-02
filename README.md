@@ -54,7 +54,7 @@ GraphHired/
 
 ### 3) Configuración inicial
 1. Clonar repositorio.
-2. Crear/configurar variables:
+2. Crear\configurar variables:
    - Raíz: `.env`
    - Backend referencia: `backend/.env.example`
    - Frontend: `frontend/.env.local`
