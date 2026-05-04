@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Componente de carga de CV. Partes: estado de formulario, validaciones de campos, envio de datos y notificaciones de resultado.
+ */
 'use client';
 
 import { useState } from 'react';

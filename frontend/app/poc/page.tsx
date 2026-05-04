@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Pagina PoC tecnica. Partes: formulario de texto, llamada a logs/process, refresco de logs y visualizacion del flujo UI-API-DB.
+ */
 'use client';
 
 import { useState } from 'react';

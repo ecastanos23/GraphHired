@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Agente de seguimiento. Partes: conversion de fechas UTC, construccion del link Google Calendar sin OAuth y valores por defecto de entrevista.
+
 """Follow-up Agent - appointments and Google Calendar links."""
 from __future__ import annotations
 

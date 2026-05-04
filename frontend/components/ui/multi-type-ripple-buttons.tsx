@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Boton con ripple. Partes: estado de ondas, manejo del click, estilos por variante y limpieza de animaciones.
+ */
 import React, { ReactNode, useState, useMemo, MouseEvent, CSSProperties } from 'react';
 
 interface RippleState {

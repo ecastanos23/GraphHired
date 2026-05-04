@@ -7,6 +7,11 @@ assignees: ''
 
 ---
 
+<!--
+COMENTARIO DE ARCHIVO - GRAPHHIRED
+Plantilla de issue no funcional. Partes: atributo de calidad, descripcion, criterios medibles y contexto tecnico.
+-->
+
 ### 1. Descripción Técnica
 **Atributo de Calidad:** [Ej: Seguridad, Escalabilidad, Disponibilidad]
 **Descripción:** Detallar el requisito técnico (ej: "El sistema debe procesar el PDF del CV en menos de 5 segundos").

@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Dashboard principal. Partes: seleccion de candidato, carga de matches, postulaciones, citas, Google Calendar y timeline de agentes.
+ */
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';

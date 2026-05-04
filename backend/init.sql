@@ -1,3 +1,6 @@
+-- COMENTARIO DE ARCHIVO - GRAPHHIRED
+-- Script inicial de PostgreSQL. Partes: extension pgvector, tablas del dominio, relaciones, indices vectoriales y vacantes semilla para pruebas.
+
 -- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
 

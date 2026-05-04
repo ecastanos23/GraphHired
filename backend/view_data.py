@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Utilidad local para inspeccionar datos. Partes: conexion a base de datos, consultas de verificacion y salida de apoyo durante pruebas.
+
 import sqlite3
 
 conn = sqlite3.connect('graphhired.db')

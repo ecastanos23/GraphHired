@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Rutas de autenticacion. Partes: registro con candidato asociado, login, /me, token JWT, generacion de embedding y eventos de agente.
+
 """Authentication routes for candidate users."""
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session

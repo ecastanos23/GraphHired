@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Servicio de embeddings. Partes: normalizacion de nombre de modelo, cache del cliente Gemini y generacion segura de vectores.
+
 """Embedding service built on top of Gemini embeddings."""
 from __future__ import annotations
 

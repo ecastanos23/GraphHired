@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Rutas de matching y postulacion. Partes: matching semantico, matching explicable, aplicacion simulada, bloqueo de duplicados y estados.
+
 """
 Matching API Routes
 Candidate-Vacancy matching and auto-application

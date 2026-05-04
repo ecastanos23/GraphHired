@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Boton con brillo al hover. Partes: props visuales, estado del mouse, capa de glow y render del contenido.
+ */
 'use client';
 
 import React, { useRef, useState, MouseEvent, ReactNode } from 'react';

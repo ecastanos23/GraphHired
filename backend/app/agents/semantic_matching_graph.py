@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Grafo semantico para embeddings. Partes: sanitizacion del texto candidato, generacion de embedding y compilacion del grafo.
+
 """
 LangGraph workflow for candidate semantic matching preparation.
 Each node receives and returns state.

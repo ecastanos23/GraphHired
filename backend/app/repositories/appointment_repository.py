@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Repositorio de citas. Partes: crear appointment con URL Calendar, listar por postulacion y consultar por id.
+
 """Repository for application appointments."""
 from typing import List, Optional
 

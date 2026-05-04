@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Pagina de registro con IA. Partes: estado de PDF/perfil, parseo del CV, formulario editable y envio a /api/auth/register.
+ */
 'use client';
 
 import { useState } from 'react';

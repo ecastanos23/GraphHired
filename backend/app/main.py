@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Aplicacion FastAPI principal. Partes: lifespan para inicializar tablas, CORS, registro de routers, endpoint raiz, health de API/DB y diagnostico de IA.
+
 """
 GraphHired Backend - Main Application Entry Point
 FastAPI application with Clean Architecture

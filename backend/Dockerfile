@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Imagen Docker del backend. Partes: base Python, dependencias del sistema, instalacion de requirements, copia del codigo y comando uvicorn.
+
 FROM python:3.11-slim
 
 WORKDIR /app

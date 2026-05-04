@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Layout global de Next.js. Partes: metadata, estructura HTML, barra de navegacion GraphHired by Magneto y contenedor principal.
+ */
 import type { Metadata } from 'next'
 import './globals.css'
 

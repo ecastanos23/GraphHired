@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Repositorio de postulaciones. Partes: crear postulacion, consultar por candidato/vacante, validar duplicados, cambiar estado y eliminar.
+
 """
 Application Repository
 Data access layer for job applications

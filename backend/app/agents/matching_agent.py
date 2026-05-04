@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Agente de matching. Partes: estado LangGraph, calculo de skills, experiencia, salario, modalidad, score total y funcion publica de comparacion.
+
 """
 Matching Agent - Semantic matching between candidates and vacancies
 Uses embeddings for similarity search and rule-based filtering

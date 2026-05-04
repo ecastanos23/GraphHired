@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Conexion sincronica a base de datos. Partes: engine SQLAlchemy, SessionLocal, dependencia get_db, inicializacion de tablas y migraciones ligeras.
+
 """
 Database Connection and Session Management
 SQLAlchemy setup - SQLite for dev, PostgreSQL for production

@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Rutas de vacantes. Partes: creacion, listado, busqueda, consulta por id, desactivacion y eliminacion de vacantes.
+
 """
 Vacancies API Routes
 Job vacancy management and search

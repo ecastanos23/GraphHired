@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Configuracion central del backend. Partes: settings desde variables de entorno, construccion de URL de base de datos, modelos Gemini y cache de configuracion.
+
 """
 Application Configuration
 Environment variables and settings management

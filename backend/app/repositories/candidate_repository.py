@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Repositorio de candidatos. Partes: crear, consultar, actualizar, guardar perfil/embedding, eliminar y buscar candidatos.
+
 """
 Candidate Repository
 Data access layer for candidates

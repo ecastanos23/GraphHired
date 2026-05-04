@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Estilos globales. Partes: import Tailwind, variables visuales, estilos base, utilidades de badges y ajustes responsive.
+ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

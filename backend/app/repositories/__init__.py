@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Inicializa el paquete de repositorios de acceso a datos.
+
 """Repositories module initialization"""
 from app.repositories.log_repository import LogRepository
 from app.repositories.candidate_repository import CandidateRepository

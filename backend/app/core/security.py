@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Funciones de seguridad. Partes: sanitizacion, validacion de archivos, hash/verificacion de password, creacion de JWT y resolucion del usuario autenticado.
+
 """
 Security and Sanitization Module
 OWASP-compliant data sanitization

@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Rutas de candidatos. Partes: parseo de CV PDF, analisis con grafo, CRUD de candidatos, carga de CV y analisis de perfil.
+
 """
 Candidates API Routes
 CV upload, profile management, and candidate operations

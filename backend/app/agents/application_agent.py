@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Agente auxiliar de postulacion y explicacion. Partes: desglose de score, explicacion de match, evidencia de postulacion, proximos pasos y razon del agente.
+
 """Application and explanation agents for the final demo."""
 from __future__ import annotations
 

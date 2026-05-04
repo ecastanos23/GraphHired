@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Componente demo UI. Partes: ejemplo visual reutilizable para probar el boton con efecto.
+ */
 import { HoverButton } from '@/components/ui/hover-glow-button';
 
 const DemoOne = () => {

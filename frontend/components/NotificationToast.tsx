@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Toast de notificacion. Partes: estado visual segun exito/error, icono, mensaje y boton para cerrar.
+ */
 'use client';
 
 import { useEffect } from 'react';

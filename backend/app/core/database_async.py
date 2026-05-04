@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Conexion asincronica a base de datos. Partes: URL async, engine async, sessionmaker async y dependencia get_async_db para matching semantico.
+
 """
 Asynchronous database session management.
 Used by semantic matching endpoints that rely on asyncpg + pgvector.

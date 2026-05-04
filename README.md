@@ -1,3 +1,8 @@
+<!--
+COMENTARIO DE ARCHIVO - GRAPHHIRED
+Documentacion principal del Sprint 2. Partes: requisitos, configuracion, ejecucion con Docker, flujo de demo, agentes, endpoints y notas de alcance.
+-->
+
 # GraphHired - Sprint 2
 
 MVP tecnico de Profile Manager con arquitectura agentica usando LangGraph, FastAPI, Next.js y PostgreSQL/pgvector.

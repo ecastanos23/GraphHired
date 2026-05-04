@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Repositorio de logs PoC. Partes: crear registro, listar recientes y consultar un log por id.
+
 """
 Log Repository
 Data access layer for logs

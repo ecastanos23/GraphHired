@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Configuracion Tailwind. Partes: rutas de contenido, extension de tema y plugins.
+ */
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [

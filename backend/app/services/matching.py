@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Servicio de matching semantico. Partes: keywords fallback, matching SQLite, matching pgvector y seleccion del motor segun configuracion.
+
 """Matching service layer.
 
 Decides which engine to use based on runtime configuration.

@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Pagina de carga manual de CV. Partes: formulario de perfil, validaciones, envio al backend y navegacion hacia resultados.
+ */
 'use client';
 
 import { useState } from 'react';

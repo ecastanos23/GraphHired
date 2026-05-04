@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Pagina Home. Partes: hero/buscador, tarjetas de senales, features, preview de matches y explicacion del flujo.
+ */
 import { HoverButton } from '@/components/ui/hover-glow-button';
 
 type FeatureCard = {

@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Modelos ORM persistentes. Partes: entidades User/Candidate/Vacancy/Application/Appointment/AgentEvent, relaciones SQLAlchemy y columna vectorial pgvector.
+
 """
 SQLAlchemy Database Models
 ORM models - Text for embeddings (SQLite), Vector for production (PostgreSQL+pgvector)

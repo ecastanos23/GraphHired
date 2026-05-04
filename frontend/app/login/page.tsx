@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Pagina de login. Partes: formulario de credenciales, llamada a auth/login, guardado del token y redireccion al dashboard.
+ */
 'use client';
 
 import { useState } from 'react';

@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Configuracion Next.js. Partes: opciones del framework para compilar y servir el frontend.
+ */
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',

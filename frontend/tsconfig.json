@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Configuracion TypeScript del frontend. Partes: opciones del compilador, alias @/*, includes y excludes.
+ */
 {
   "compilerOptions": {
     "target": "es5",

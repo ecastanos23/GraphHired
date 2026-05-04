@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Repositorio de trazabilidad. Partes: crear eventos de agentes y consultar timeline por candidato.
+
 """Repository for agent trace events."""
 from typing import Optional, List
 

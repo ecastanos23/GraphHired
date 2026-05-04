@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Agente de perfil. Partes: prompts de extraccion, analisis de CV, fallback basico, normalizacion de datos y generacion de dataset Colombia.
+
 """
 Profile Agent - LangGraph agent for CV analysis and profile extraction
 Uses LLM to extract skills, experience, and generate recommendations

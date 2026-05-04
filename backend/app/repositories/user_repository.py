@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Repositorio de usuarios. Partes: busqueda por email/id y creacion de usuario asociado a candidato.
+
 """User repository for authentication."""
 from typing import Optional
 

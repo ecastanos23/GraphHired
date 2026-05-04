@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Punto de entrada alternativo del backend. Partes: importacion/arranque de la aplicacion FastAPI principal para compatibilidad de despliegue.
+
 """
 GraphHired - Backend Entry Point
 FastAPI application with LangGraph agents for job matching

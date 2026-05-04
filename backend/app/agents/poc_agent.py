@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Agente PoC. Partes: estado simple, nodo que transforma texto, grafo LangGraph minimo y funcion de procesamiento para probar el pipeline.
+
 """
 PoC Agent - Basic LangGraph node for Hello World testing
 Demonstrates LangGraph integration with a simple text transformation

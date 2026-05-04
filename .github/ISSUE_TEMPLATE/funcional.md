@@ -7,6 +7,11 @@ assignees: ''
 
 ---
 
+<!--
+COMENTARIO DE ARCHIVO - GRAPHHIRED
+Plantilla de issue funcional. Partes: descripcion, historia de usuario, criterios de aceptacion y contexto para backlog.
+-->
+
 ### 1. Definición (User Story)
 **Como** [Rol del usuario: Candidato/Reclutador/Agente]
 **Quiero** [Acción/Funcionalidad]

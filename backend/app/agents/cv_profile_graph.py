@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Grafo LangGraph para CV PDF. Partes: estado del grafo, prompt, limpieza JSON, fallback local, llamada Gemini, extraccion PDF y nodos del flujo.
+
 """
 LangGraph workflow for CV parsing and profile extraction from PDF.
 """

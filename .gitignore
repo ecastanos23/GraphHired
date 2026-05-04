@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Reglas de Git para evitar subir secretos, dependencias, builds y archivos temporales. Partes: entornos locales, caches de Python/Node, carpetas generadas y configuraciones privadas.
+
 # Dependencies
 node_modules/
 __pycache__/

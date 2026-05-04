@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Contratos Pydantic de la API. Partes: schemas de logs, candidatos, auth, CV parseado, vacantes, matching, postulaciones, citas y trazabilidad.
+
 """
 Pydantic Schemas for API Request/Response
 Data validation and serialization

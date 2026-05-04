@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Tarjeta de match. Partes: datos de vacante, badge de score, explicacion IA, desglose, skills coincidentes/faltantes y accion de aplicar.
+ */
 'use client';
 
 import { HoverButton } from '@/components/ui/hover-glow-button';

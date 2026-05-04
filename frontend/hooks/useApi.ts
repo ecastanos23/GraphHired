@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Hook cliente API. Partes: URL base, loading/error, manejo de token JWT, GET/POST/FormData/PUT/DELETE y errores HTTP.
+ */
 'use client';
 
 import { useState, useCallback } from 'react';

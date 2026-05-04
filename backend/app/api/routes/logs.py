@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Rutas de la PoC tecnica. Partes: procesar texto, persistir log y consultar registros para validar UI/API/DB.
+
 """
 Logs API Routes - PoC Endpoint
 Hello World test for LangGraph integration

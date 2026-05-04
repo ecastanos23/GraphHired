@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Repositorio de vacantes. Partes: crear, listar activas, actualizar embedding, buscar por criterios, desactivar y eliminar.
+
 """
 Vacancy Repository
 Data access layer for job vacancies

@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Orquestacion local de la demo. Partes: servicio backend FastAPI, servicio frontend Next.js, base de datos PostgreSQL con pgvector, volumen persistente y red compartida.
+
 services:
   backend:
     build:

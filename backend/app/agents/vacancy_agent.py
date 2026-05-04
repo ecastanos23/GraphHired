@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Agente de vacantes. Partes: conversion de salario, normalizacion de modalidad, estimacion de experiencia y sincronizacion del dataset curado.
+
 """Vacancy Agent - curates and normalizes demo vacancies for a candidate."""
 from decimal import Decimal
 import re

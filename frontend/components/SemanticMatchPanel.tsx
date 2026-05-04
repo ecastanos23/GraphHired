@@ -1,3 +1,7 @@
+/*
+ * COMENTARIO DE ARCHIVO - GRAPHHIRED
+ * Panel de matching semantico. Partes: normalizacion de respuesta API, carga de resultados y render de vacantes por similitud.
+ */
 'use client';
 
 import { useEffect, useState } from 'react';

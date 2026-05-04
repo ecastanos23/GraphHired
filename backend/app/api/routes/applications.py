@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Rutas de citas. Partes: creacion/listado de appointments, validacion de fechas, link Google Calendar y evento de trazabilidad.
+
 """Application process endpoints: appointments and follow-up."""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session

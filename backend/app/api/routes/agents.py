@@ -1,3 +1,6 @@
+# COMENTARIO DE ARCHIVO - GRAPHHIRED
+# Rutas de agentes. Partes: consulta de timeline agentico y refresco manual del dataset de vacantes para un candidato.
+
 """Agent trace and orchestration endpoints."""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
