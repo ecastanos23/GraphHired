@@ -250,7 +250,7 @@ function DashboardContent() {
                 Recomendaciones, postulaciones y seguimiento
               </h1>
               <p className="text-sm leading-6 text-slate-200 sm:text-base">
-                Cada recomendacion muestra por que la IA eligio esa empresa y cada accion queda trazada por agentes.
+                Cada recomendación muestra por qué la IA eligió esa empresa y cada acción queda trazada por agentes.
               </p>
             </div>
 

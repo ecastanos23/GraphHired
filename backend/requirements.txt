@@ -7,8 +7,8 @@ uvicorn[standard]==0.27.1
 
 # AI/LLM
 langgraph==0.2.60
-langchain-core==0.3.83
-langchain-google-genai==2.1.4
+langchain-core==0.2.43
+langchain-openai==0.1.23
 
 # Database
 sqlalchemy==2.0.47

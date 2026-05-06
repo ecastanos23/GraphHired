@@ -74,15 +74,15 @@ async def health_check():
     return {
         "status": "healthy" if database_status == "connected" else "degraded",
         "database": database_status,
-        "ai_service": "ready" if settings.GEMINI_API_KEY else "missing_api_key"
+        "ai_service": "ready" if settings.OPENAI_API_KEY else "missing_api_key"
     }
 
 @app.get("/health/ai", tags=["Health"])
 async def ai_health_check():
     """AI provider diagnostics without exposing secrets"""
     return {
-        "provider": "gemini",
-        "model": settings.GEMINI_MODEL,
-        "embedding_model": settings.GEMINI_EMBEDDING_MODEL,
-        "api_key_configured": bool(settings.GEMINI_API_KEY)
+        "provider": "openai",
+        "model": settings.OPENAI_MODEL,
+        "embedding_model": settings.OPENAI_EMBEDDING_MODEL,
+        "api_key_configured": bool(settings.OPENAI_API_KEY)
     }

@@ -7,7 +7,7 @@ Uses LLM to extract skills, experience, and generate recommendations
 """
 from typing import TypedDict, List, Optional, Any
 from langgraph.graph import StateGraph, END
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 import json
 import re
@@ -76,15 +76,15 @@ Restricciones:
 
 def get_llm():
     """Get LLM instance with optimized settings"""
-    api_key = settings.GEMINI_API_KEY
+    api_key = settings.OPENAI_API_KEY
     if not api_key:
         return None
     
-    return ChatGoogleGenerativeAI(
-        model=settings.GEMINI_MODEL,
+    return ChatOpenAI(
+        model=settings.OPENAI_MODEL,
         temperature=0,  # Deterministic output for consistency
         max_tokens=500,  # Limit tokens for efficiency
-        google_api_key=api_key
+        api_key=api_key
     )
 
 def extract_profile_node(state: ProfileState) -> ProfileState:

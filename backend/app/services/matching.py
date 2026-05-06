@@ -11,7 +11,7 @@ from collections.abc import Iterable
 import re
 
 import bleach
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,16 +26,12 @@ class MatchingService:
     def _normalize_model_name(model_name: str) -> str:
         raw = (model_name or "").strip()
         if not raw:
-            return "models/gemini-embedding-001"
-        if raw in {"text-embedding-004", "models/text-embedding-004"}:
-            return "models/gemini-embedding-001"
-        if raw.startswith("models/"):
-            return raw
-        return f"models/{raw}"
+            return "text-embedding-3-small"
+        return raw
 
     @staticmethod
     def _resolve_embedding_model_name() -> str:
-        return MatchingService._normalize_model_name(settings.GEMINI_EMBEDDING_MODEL)
+        return MatchingService._normalize_model_name(settings.OPENAI_EMBEDDING_MODEL)
 
     @staticmethod
     async def get_best_matches(
@@ -131,29 +127,28 @@ class MatchingService:
         limit: int,
     ) -> list[tuple[Vacancy, float]]:
         """Production path using cosine distance over pgvector embeddings."""
-        if not settings.GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY is not configured")
+        if not settings.OPENAI_API_KEY:
+            raise ValueError("OPENAI_API_KEY is not configured")
 
         candidate_embedding = candidate.cv_embedding
         if not candidate_embedding:
             if not candidate.cv_text:
                 raise ValueError("Candidate has no CV text to generate an embedding")
 
-            embeddings = GoogleGenerativeAIEmbeddings(
+            embeddings = OpenAIEmbeddings(
                 model=MatchingService._resolve_embedding_model_name(),
-                google_api_key=settings.GEMINI_API_KEY,
+                api_key=settings.OPENAI_API_KEY,
             )
             clean_cv_text = bleach.clean(candidate.cv_text, tags=[], attributes={}, strip=True).strip()
             candidate_embedding = embeddings.embed_query(
                 clean_cv_text,
-                output_dimensionality=1536,
             )
             candidate.cv_embedding = candidate_embedding
             await db.commit()
 
-        embeddings = GoogleGenerativeAIEmbeddings(
+        embeddings = OpenAIEmbeddings(
             model=MatchingService._resolve_embedding_model_name(),
-            google_api_key=settings.GEMINI_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
         )
 
         vacancies_without_embedding_stmt = select(Vacancy).where(
@@ -168,7 +163,6 @@ class MatchingService:
                 continue
             vacancy.description_embedding = embeddings.embed_query(
                 clean_description,
-                output_dimensionality=1536,
             )
 
         if vacancies_without_embedding:

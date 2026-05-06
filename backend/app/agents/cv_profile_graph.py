@@ -1,5 +1,5 @@
 # COMENTARIO DE ARCHIVO - GRAPHHIRED
-# Grafo LangGraph para CV PDF. Partes: estado del grafo, prompt, limpieza JSON, fallback local, llamada Gemini, extraccion PDF y nodos del flujo.
+# Grafo LangGraph para CV PDF. Partes: estado del grafo, prompt, limpieza JSON, fallback local, llamada OpenAI, extraccion PDF y nodos del flujo.
 
 """
 LangGraph workflow for CV parsing and profile extraction from PDF.
@@ -12,7 +12,7 @@ import requests
 import bleach
 from PyPDF2 import PdfReader
 from langgraph.graph import StateGraph, END
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.core.config import settings
@@ -82,28 +82,10 @@ def _fallback_structured_profile(text: str) -> Dict[str, Any]:
         "skills": skills[:12],
         "experience_years": 0,
         "education": None,
-        "summary": "Perfil extraido en modo fallback; configura GEMINI_API_KEY para analisis completo.",
+        "summary": "Perfil extraido en modo fallback; configura OPENAI_API_KEY para analisis completo.",
         "profile_gaps": gaps,
         "recommended_roles": ["Software Developer"] if skills else [],
     }
-
-
-def _generate_content_direct(model_name: str, api_key: str, prompt: str) -> str:
-    """Call the Google Generative Language API directly for models without system instructions."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
-    response = requests.post(
-        url,
-        params={"key": api_key},
-        json={"contents": [{"parts": [{"text": prompt}]}]},
-        timeout=30,
-    )
-    response.raise_for_status()
-    data = response.json()
-    candidates = data.get("candidates", [])
-    if not candidates:
-        raise ValueError("Model returned no candidates")
-    parts = candidates[0].get("content", {}).get("parts", [])
-    return "".join(str(part.get("text", "")) for part in parts)
 
 
 def extract_text_node(state: CVProfileState) -> CVProfileState:
@@ -126,7 +108,7 @@ def analyze_profile_node(state: CVProfileState) -> CVProfileState:
     if not text.strip():
         return {**state, "error": "Extracted CV text is empty"}
 
-    api_key = settings.GEMINI_API_KEY
+    api_key = settings.OPENAI_API_KEY
     if not api_key:
         return {**state, "structured_data": _fallback_structured_profile(text), "error": None}
 
@@ -136,15 +118,15 @@ def analyze_profile_node(state: CVProfileState) -> CVProfileState:
         HumanMessage(content=prompt),
     ]
 
-    model_candidates = [settings.GEMINI_MODEL, "gemma-3-1b-it"]
+    model_candidates = [settings.OPENAI_MODEL]
     last_error = ""
     for model_name in dict.fromkeys(model_candidates):
         try:
-            llm = ChatGoogleGenerativeAI(
+            llm = ChatOpenAI(
                 model=model_name,
                 temperature=0,
                 max_tokens=500,
-                google_api_key=api_key,
+                api_key=api_key,
             )
             response = llm.invoke(messages)
             payload = json.loads(_clean_json_payload(str(response.content)))
@@ -156,20 +138,9 @@ def analyze_profile_node(state: CVProfileState) -> CVProfileState:
         except Exception as exc:
             last_error = str(exc)
 
-    try:
-        response_text = _generate_content_direct("gemma-3-1b-it", api_key, prompt)
-        payload = json.loads(_clean_json_payload(response_text))
-        fallback = _fallback_structured_profile(text)
-        for key, value in fallback.items():
-            payload.setdefault(key, value)
-        payload["analysis_model"] = "gemma-3-1b-it"
-        return {**state, "structured_data": payload, "error": None}
-    except Exception as exc:
-        last_error = str(exc)
-
     fallback = _fallback_structured_profile(text)
     fallback["profile_gaps"] = list(fallback.get("profile_gaps", [])) + [
-        "Gemini no respondio por cuota o disponibilidad; se uso extraccion local de respaldo."
+        "OpenAI no respondio; se uso extraccion local de respaldo."
     ]
     fallback["summary"] = f"{fallback['summary']} Motivo IA: {last_error[:180]}"
     return {**state, "structured_data": fallback, "error": None}

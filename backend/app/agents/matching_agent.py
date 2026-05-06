@@ -7,7 +7,7 @@ Uses embeddings for similarity search and rule-based filtering
 """
 from typing import TypedDict, List, Optional
 from langgraph.graph import StateGraph, END
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from decimal import Decimal
 import numpy as np
 
@@ -36,12 +36,12 @@ class MatchState(TypedDict):
 
 def get_embeddings():
     """Get embeddings instance"""
-    api_key = settings.GEMINI_API_KEY
+    api_key = settings.OPENAI_API_KEY
     if not api_key:
         return None
-    return GoogleGenerativeAIEmbeddings(
-        model=settings.GEMINI_EMBEDDING_MODEL,
-        google_api_key=api_key
+    return OpenAIEmbeddings(
+        model=settings.OPENAI_EMBEDDING_MODEL,
+        api_key=api_key
     )
 
 def calculate_skill_match(state: MatchState) -> MatchState:

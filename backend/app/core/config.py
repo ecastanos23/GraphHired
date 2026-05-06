@@ -1,5 +1,5 @@
 # COMENTARIO DE ARCHIVO - GRAPHHIRED
-# Configuracion central del backend. Partes: settings desde variables de entorno, construccion de URL de base de datos, modelos Gemini y cache de configuracion.
+# Configuracion central del backend. Partes: settings desde variables de entorno, construccion de URL de base de datos, modelos OpenAI y cache de configuracion.
 
 """
 Application Configuration
@@ -30,10 +30,10 @@ class Settings(BaseSettings):
         return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
     
 
-    # Gemini (Google AI Studio)
-    GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.0-flash"
-    GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
+    # OpenAI
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4-turbo"
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"

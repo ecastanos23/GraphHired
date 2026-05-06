@@ -33,7 +33,7 @@ const benefitItems = [
     description: 'Estructura tu CV y extrae señales útiles para el matching semántico.',
   },
   {
-    title: 'Embeddings con Gemini',
+    title: 'Embeddings con OpenAI',
     description: 'Convierte tu perfil en vectores para encontrar vacantes más precisas.',
   },
   {

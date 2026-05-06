@@ -98,7 +98,7 @@ export default function RegisterPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-100">Registro con IA</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Crea tu cuenta desde el CV</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-200">
-            Sube un PDF, Gemini extrae los datos principales y tu puedes corregirlos antes de crear el perfil.
+            Sube un PDF, OpenAI extrae los datos principales y tu puedes corregirlos antes de crear el perfil.
           </p>
         </div>
       </section>

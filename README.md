@@ -11,7 +11,7 @@ MVP tecnico de Profile Manager con arquitectura agentica usando LangGraph, FastA
 
 - Docker Desktop
 - Docker Compose
-- `GEMINI_API_KEY` para la demo completa con IA
+- `OPENAI_API_KEY` para la demo completa con IA
 
 ## Configuracion
 
@@ -26,7 +26,7 @@ DB_PORT=5432
 
 BACKEND_PORT=8000
 SECRET_KEY=dev-secret-key-change-me
-GEMINI_API_KEY=tu_api_key
+OPENAI_API_KEY=tu_api_key
 ```
 
 ## Ejecucion
@@ -46,11 +46,11 @@ Servicios:
 ## Flujo de demo
 
 1. Entrar a `/register`.
-2. Subir un CV en PDF y usar "Analizar con Gemini".
+2. Subir un CV en PDF y usar "Analizar con OpenAI".
 3. Revisar y corregir los campos autollenados.
 4. Crear cuenta.
 5. Ir al dashboard para ver recomendaciones.
-6. Revisar por que la IA eligio cada empresa: score, desglose y explicacion.
+6. Revisar por qué la IA eligió cada empresa: score, desglose y explicación.
 7. Hacer una postulacion simulada.
 8. Revisar evidencia, proximos pasos y trazabilidad por agente.
 9. Agendar una entrevista.

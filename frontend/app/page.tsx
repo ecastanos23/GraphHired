@@ -55,7 +55,7 @@ const previewMatches: PreviewMatch[] = [
     score: 92.1,
     location: 'Remoto LATAM',
     modality: 'Remoto',
-    tags: ['LangGraph', 'Gemini', 'pgvector'],
+    tags: ['LangGraph', 'OpenAI', 'pgvector'],
   },
 ];
 

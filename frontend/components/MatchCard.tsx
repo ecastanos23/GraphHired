@@ -55,7 +55,7 @@ export default function MatchCard({ match, onApply, badgeClass }: MatchCardProps
 
       {match.match_explanation && (
         <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">
-          <p className="font-semibold">Por que la IA eligio esta empresa</p>
+          <p className="font-semibold">Por qué la IA eligió esta empresa</p>
           <p className="mt-1">{match.match_explanation}</p>
         </div>
       )}
