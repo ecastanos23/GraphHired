@@ -52,12 +52,7 @@ export default function RootLayout({
                 >
                   Login
                 </a>
-                <a
-                  href="/upload"
-                  className="whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
-                >
-                  Subir CV
-                </a>
+                {/* Upload page removed per request */}
                 <a
                   href="/dashboard"
                   className="whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
