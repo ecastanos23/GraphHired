@@ -134,10 +134,34 @@ export default function Home() {
 
             <div className="flex flex-wrap justify-center gap-3 text-sm text-slate-200">
               <a
+                href="/"
+                className="rounded-full border border-white/15 bg-white/10 px-4 py-2 transition-all duration-300 hover:bg-white/20 hover:-translate-y-0.5"
+              >
+                Inicio
+              </a>
+              <a
+                href="/register"
+                className="rounded-full border border-white/15 bg-white/10 px-4 py-2 transition-all duration-300 hover:bg-white/20 hover:-translate-y-0.5"
+              >
+                Registro
+              </a>
+              <a
+                href="/login"
+                className="rounded-full border border-white/15 bg-white/10 px-4 py-2 transition-all duration-300 hover:bg-white/20 hover:-translate-y-0.5"
+              >
+                Login
+              </a>
+              <a
                 href="/dashboard"
                 className="rounded-full border border-white/15 bg-white/10 px-4 py-2 transition-all duration-300 hover:bg-white/20 hover:-translate-y-0.5"
               >
                 Ver vacantes
+              </a>
+              <a
+                href="/poc"
+                className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 transition-all duration-300 hover:bg-emerald-100"
+              >
+                PoC Test
               </a>
             </div>
           </div>
