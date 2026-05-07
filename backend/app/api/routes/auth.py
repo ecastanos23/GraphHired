@@ -87,6 +87,11 @@ async def register(
             expected_salary=data.expected_salary,
             work_modality=data.work_modality,
             location=sanitize_text(data.location or "") or None,
+            education=data.education,
+            experience=data.experience,
+            languages=data.languages,
+            certifications=data.certifications,
+            summary=sanitize_text(data.summary or "") or None,
         )
         candidate = candidate_repo.create(candidate_data)
 
@@ -101,8 +106,15 @@ async def register(
         )
         candidate_repo.update_profile(
             candidate.id,
-            skills=profile["skills"],
-            experience_years=profile["experience_years"],
+            skills=profile.get("skills", []),
+            experience_years=int(profile.get("experience_years", 0) or 0),
+            # Ensure all list fields are lists, never None or strings
+            education=profile.get("education") or [],
+            experience=profile.get("experience") or [],
+            languages=profile.get("languages") or [],
+            certifications=profile.get("certifications") or [],
+            summary=sanitize_text(profile.get("summary", "") or ""),
+            recommended_roles=profile.get("recommended_roles") or [],
         )
         sync_curated_market_vacancies(
             db=db,

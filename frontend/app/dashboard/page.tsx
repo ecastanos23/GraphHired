@@ -130,36 +130,63 @@ function DashboardContent() {
 
   const fetchMatches = async (candidateId: number) => {
     try {
+      // Cargar matches/recomendaciones de vacantes para el candidato
+      console.log(`🔄 Cargando matches para candidato ${candidateId}`);
       const data = await get<MatchingResponse>(`/api/matching/candidate/${candidateId}?min_score=0&limit=20`);
       setMatches(data);
+      console.log(`✅ Matches cargados:`, data?.matches?.length || 0);
     } catch (err) {
-      console.error('Error fetching matches:', err);
+      console.error('❌ Error al cargar matches:', err);
+      // Mostrar notificación al usuario con el error específico
+      setNotification({
+        show: true,
+        message: `Error cargando ofertas: ${err instanceof Error ? err.message : String(err)}`,
+        type: 'error',
+      });
     }
   };
 
   const fetchProcess = async (candidateId: number) => {
     try {
+      // Paso 1: Cargar aplicaciones del candidato
+      console.log(`🔄 Cargando aplicaciones para candidato ${candidateId}`);
       const apps = await get<Application[]>(`/api/matching/applications/candidate/${candidateId}`);
+      
+      // Paso 2: Para cada aplicación, cargar sus citas
       const withAppointments = await Promise.all(
         (apps || []).map(async (application) => {
           try {
+            console.log(`  📅 Cargando citas para aplicación ${application.id}`);
             const appointments = await get<Appointment[]>(`/api/applications/${application.id}/appointments`);
             return { ...application, appointments: appointments || [] };
-          } catch {
+          } catch (err) {
+            // Las citas son opcionales - si fallan, continuamos sin ellas
+            console.warn(`  ⚠️ No se pudieron cargar citas para aplicación ${application.id}:`, err);
             return { ...application, appointments: [] };
           }
         })
       );
       setApplications(withAppointments);
+      console.log(`✅ Aplicaciones cargadas:`, withAppointments.length);
     } catch (err) {
-      console.error('Error fetching applications:', err);
+      console.error('❌ Error al cargar aplicaciones:', err);
+      // Mostrar error al usuario
+      setNotification({
+        show: true,
+        message: `Error cargando aplicaciones: ${err instanceof Error ? err.message : String(err)}`,
+        type: 'error',
+      });
     }
 
     try {
+      // Paso 3: Cargar el historial de eventos de los agentes IA
+      console.log(`🔄 Cargando trace de agentes para candidato ${candidateId}`);
       const events = await get<AgentEvent[]>(`/api/agents/trace?candidate_id=${candidateId}&limit=50`);
       setTrace(events || []);
+      console.log(`✅ Trace de agentes cargado:`, events?.length || 0);
     } catch (err) {
-      console.error('Error fetching trace:', err);
+      // El trace es informativo solamente - no es crítico si falla
+      console.warn('⚠️ No se pudo cargar el trace de agentes (optional):', err);
     }
   };
 

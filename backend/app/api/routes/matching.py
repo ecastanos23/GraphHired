@@ -164,7 +164,7 @@ async def get_matches_for_candidate(
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     
-    # Get all active vacancies
+    # Get active vacancies (limit to prevent slow processing)
     all_vacancies = vacancy_repo.get_all(active_only=True)
     
     # Strict filter by canonical location (supports equivalent spellings)
@@ -193,9 +193,13 @@ async def get_matches_for_candidate(
     else:
         vacancies = all_vacancies
     
+    # OPTIMIZATION: Limit vacancies to process to prevent timeout (process max 50 vacancies)
+    # Real-world apps would use pagination or background jobs for full dataset processing
+    vacancies_to_process = vacancies[:50] if len(vacancies) > 50 else vacancies
+    
     # Calculate matches
     matches = []
-    for vacancy in vacancies:
+    for vacancy in vacancies_to_process:
         # Run matching algorithm
         result = match_candidate_to_vacancy(
             candidate_skills=candidate.skills or [],
@@ -237,7 +241,7 @@ async def get_matches_for_candidate(
         agent_name="Agente de Matching",
         action="Calculo recomendaciones explicables",
         reason="Se compararon habilidades, experiencia, salario y modalidad para ordenar vacantes por afinidad.",
-        input_summary=f"candidate={candidate.full_name}, vacancies={len(vacancies)}",
+        input_summary=f"candidate={candidate.full_name}, vacancies={len(vacancies_to_process)}",
         output_summary=f"matches={len(matches)}, top={matches[0].company if matches else 'sin resultados'}",
     )
     

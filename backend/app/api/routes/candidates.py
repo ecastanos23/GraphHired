@@ -95,6 +95,12 @@ async def parse_cv_pdf_for_registration(
         skills = [sanitize_text(str(skill)) for skill in structured_data.get("skills", []) if skill]
         profile_gaps = [sanitize_text(str(gap)) for gap in structured_data.get("profile_gaps", []) if gap]
         recommended_roles = [sanitize_text(str(role)) for role in structured_data.get("recommended_roles", []) if role]
+        # extract additional fields if present
+        contact = structured_data.get("contact") or {}
+        education = structured_data.get("education") or []
+        experience = structured_data.get("experience") or []
+        languages = structured_data.get("languages") or []
+        certifications = structured_data.get("certifications") or []
 
         AgentEventRepository(db).create(
             agent_name="Agente de Perfil",
@@ -108,9 +114,17 @@ async def parse_cv_pdf_for_registration(
             full_name=_clean_optional_profile_value(structured_data.get("full_name")),
             email=_clean_optional_profile_value(structured_data.get("email")),
             phone=_clean_optional_profile_value(structured_data.get("phone")),
+            contact={
+                "email": _clean_optional_profile_value(contact.get("email")),
+                "phone": _clean_optional_profile_value(contact.get("phone")),
+                "location": _clean_optional_profile_value(contact.get("location")),
+            } if contact else None,
             skills=skills,
             experience_years=int(structured_data.get("experience_years", 0) or 0),
-            education=structured_data.get("education"),
+            education=education,
+            experience=experience,
+            languages=languages,
+            certifications=certifications,
             summary=structured_data.get("summary", ""),
             profile_gaps=profile_gaps,
             recommended_roles=recommended_roles,
@@ -246,11 +260,26 @@ async def analyze_cv_pdf_with_graph(
         skills = [sanitize_text(skill) for skill in structured_data.get("skills", []) if skill]
         experience_years = int(structured_data.get("experience_years", 0) or 0)
 
+        # persist expanded profile fields when available
+        extra = {
+            "education": structured_data.get("education"),
+            "experience": structured_data.get("experience"),
+            "languages": structured_data.get("languages"),
+            "certifications": structured_data.get("certifications"),
+            "summary": structured_data.get("summary"),
+            "profile_gaps": structured_data.get("profile_gaps"),
+            "recommended_roles": structured_data.get("recommended_roles"),
+            "full_name": structured_data.get("full_name"),
+            "phone": structured_data.get("phone"),
+            "analysis_model": structured_data.get("analysis_model"),
+        }
+
         repo.update_profile(
             candidate_id=candidate_id,
             skills=skills,
             experience_years=experience_years,
             cv_text=clean_cv_text,
+            **{k: v for k, v in extra.items() if v is not None},
         )
 
         return CVGraphAnalysisResponse(
@@ -344,8 +373,19 @@ async def upload_cv_with_expectations(
             "location": clean_location
         }
         profile = analyze_profile(clean_cv, expectations)
-        existing.skills = profile["skills"]
-        existing.experience_years = profile["experience_years"]
+        # Persist profile fields returned by the LLM when available
+        repo.update_profile(
+            candidate_id=existing.id,
+            skills=profile.get("skills", []),
+            experience_years=int(profile.get("experience_years", 0) or 0),
+            cv_text=clean_cv,
+            education=profile.get("education") or [],
+            experience=profile.get("experience") or [],
+            languages=profile.get("languages") or [],
+            certifications=profile.get("certifications") or [],
+            summary=profile.get("summary") or "",
+            recommended_roles=profile.get("recommended_roles") or [],
+        )
 
         # Keep the dashboard populated with realistic and profile-aware opportunities.
         sync_curated_market_vacancies(
@@ -355,8 +395,7 @@ async def upload_cv_with_expectations(
             profile_data=profile,
             preferred_location=clean_location,
         )
-        
-        db.commit()
+
         db.refresh(existing)
         background_tasks.add_task(_generate_and_store_candidate_embedding, existing.id, existing.cv_text)
         return existing
@@ -381,8 +420,14 @@ async def upload_cv_with_expectations(
         profile = analyze_profile(clean_cv, expectations)
         repo.update_profile(
             candidate.id,
-            skills=profile["skills"],
-            experience_years=profile["experience_years"]
+            skills=profile.get("skills", []),
+            experience_years=int(profile.get("experience_years", 0) or 0),
+            education=profile.get("education") or [],
+            experience=profile.get("experience") or [],
+            languages=profile.get("languages") or [],
+            certifications=profile.get("certifications") or [],
+            summary=profile.get("summary") or "",
+            recommended_roles=profile.get("recommended_roles") or [],
         )
 
         # Keep the dashboard populated with realistic and profile-aware opportunities.

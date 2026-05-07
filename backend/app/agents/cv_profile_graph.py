@@ -5,11 +5,12 @@
 LangGraph workflow for CV parsing and profile extraction from PDF.
 """
 from typing import TypedDict, Optional, Dict, Any
+import base64
 import json
 import re
-import requests
 
 import bleach
+import fitz
 from PyPDF2 import PdfReader
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
@@ -25,18 +26,67 @@ class CVProfileState(TypedDict):
     error: Optional[str]
 
 
-PROFILE_PROMPT = """Analyze this CV text for a Colombia job-search profile.
-Return ONLY valid JSON with this schema:
+VISION_PAGE_LIMIT = 6
+VISION_RENDER_ZOOM = 2.0
+VISION_MIN_TEXT_LENGTH = 250
+
+
+PROFILE_PROMPT = """Extract a complete, structured professional profile from the CV text below. Return ONLY valid JSON.
+
+EXTRACTION RULES - Be thorough and explicit:
+1. full_name: Extract complete name (first + last names).
+2. contact: Extract all contact info. LOCATION: Look for city names after phone, email, or with keywords like "Medellín - Colombia", "Bogotá", "Cali", etc. If no explicit location, infer from context (company locations, university cities). Default to null if truly not found.
+3. summary: Combine "Resumen personal" or intro sections; max 3 sentences capturing key strengths.
+4. experience_years: Calculate total years of professional experience (today - earliest start date).
+5. experience: For EACH job, extract:
+   - role: Job title (e.g. "McDonald's Cashier", "Software Developer")
+   - company: Company name
+   - start_date: Start month/year (e.g. "2024-05")
+   - end_date: End month/year or "present" if current
+   - duration: Calculated years (e.g. 0.3 for 3 months)
+   - description: 1-2 line bullet list of main duties/accomplishments
+6. education: For EACH degree/course, extract:
+   - degree: Degree type (e.g. "Ingeniería de Sistemas", "Técnico Laboral", "Bachillerato")
+   - field: Field of study if applicable
+   - institution: School/university name
+   - year: Graduation year or "en curso" if ongoing
+   - description: Duration or key info (e.g. "88 horas")
+7. skills: List EXPLICITLY mentioned technical skills (not soft skills). Normalize to lowercase.
+8. languages: Extract language + proficiency level. If not stated, infer from context.
+9. certifications: Courses, seminars, certifications (separate from degrees).
+10. profile_gaps: List missing critical info (salary expectations, availability, work preferences).
+11. recommended_roles: Suggest 2-3 roles based on skills + experience.
+
+Return ONLY this JSON schema (no explanations):
 {{
-  "full_name": "candidate name if present",
-  "email": "email if present",
-  "phone": "phone if present",
-  "skills": ["skill1", "skill2"],
-  "experience_years": 0,
-  "education": "highest education if present",
-  "summary": "short professional summary",
-  "profile_gaps": ["missing data needed for job applications"],
-  "recommended_roles": ["role1", "role2", "role3"]
+    "full_name": string | null,
+    "contact": {{ "email": string | null, "phone": string | null, "location": string | null }},
+    "summary": string | null,
+    "experience_years": number,
+    "experience": [
+        {{
+            "role": string,
+            "company": string | null,
+            "start_date": string | null,
+            "end_date": string | null,
+            "duration": number | null,
+            "description": string | null
+        }}
+    ],
+    "education": [
+        {{
+            "degree": string | null,
+            "field": string | null,
+            "institution": string | null,
+            "year": string | number | null,
+            "description": string | null
+        }}
+    ],
+    "skills": string[],
+    "languages": [ {{ "language": string, "level": string | null }} ],
+    "certifications": [ {{ "name": string, "issuer": string | null, "year": string | null }} ],
+    "profile_gaps": string[],
+    "recommended_roles": string[]
 }}
 
 CV TEXT:
@@ -81,23 +131,97 @@ def _fallback_structured_profile(text: str) -> Dict[str, Any]:
         "phone": phone_match.group(0).strip() if phone_match else None,
         "skills": skills[:12],
         "experience_years": 0,
-        "education": None,
+        "education": [],  # Return empty list, not None
+        "experience": [],  # Return empty list
+        "languages": [],  # Return empty list
+        "certifications": [],  # Return empty list
         "summary": "Perfil extraido en modo fallback; configura OPENAI_API_KEY para analisis completo.",
         "profile_gaps": gaps,
         "recommended_roles": ["Software Developer"] if skills else [],
     }
 
 
+def _extract_text_with_pypdf(pdf_path: str) -> str:
+    reader = PdfReader(pdf_path)
+    text_parts = [page.extract_text() or "" for page in reader.pages]
+    text = "\n".join(text_parts)
+    return bleach.clean(text, tags=[], attributes={}, strip=True)
+
+
+def _render_pdf_pages_as_data_urls(pdf_path: str, max_pages: int = VISION_PAGE_LIMIT) -> list[str]:
+    data_urls: list[str] = []
+    with fitz.open(pdf_path) as document:
+        for page_index, page in enumerate(document):
+            if page_index >= max_pages:
+                break
+            pixmap = page.get_pixmap(matrix=fitz.Matrix(VISION_RENDER_ZOOM, VISION_RENDER_ZOOM), alpha=False)
+            encoded = base64.b64encode(pixmap.tobytes("png")).decode("ascii")
+            data_urls.append(f"data:image/png;base64,{encoded}")
+    return data_urls
+
+
+def _transcribe_pdf_with_vision(pdf_path: str, api_key: str, model_name: str) -> str:
+    image_urls = _render_pdf_pages_as_data_urls(pdf_path)
+    if not image_urls:
+        return ""
+
+    llm = ChatOpenAI(
+        model=model_name,
+        temperature=0,
+        max_tokens=2000,
+        api_key=api_key,
+    )
+
+    content: list[dict[str, Any]] = [
+        {
+            "type": "text",
+            "text": (
+                "Transcribe the attached CV pages into clean plain text. "
+                "Preserve headings, bullets, emails, phone numbers, dates, tables hints, and original section order. "
+                "Insert a page separator line exactly like '---PAGE {n}---' before each page's content. "
+                "Do NOT summarize, interpret, or add labels — return only the verbatim extracted text with separators."
+            ),
+        }
+    ]
+    for page_index, image_url in enumerate(image_urls, start=1):
+        content.append({"type": "text", "text": f"Page {page_index}"})
+        content.append({"type": "image_url", "image_url": {"url": image_url}})
+
+    response = llm.invoke(
+        [
+            SystemMessage(content="You are a precise OCR engine specialized in CVs."),
+            HumanMessage(content=content),
+        ]
+    )
+    return str(response.content or "").strip()
+
+
 def extract_text_node(state: CVProfileState) -> CVProfileState:
     pdf_path = state.get("raw_pdf_path", "")
+    api_key = settings.OPENAI_API_KEY
+    vision_error = None
+    direct_text_error = None
+
+    # Priority 1: Try vision-based OCR transcription first (handles complex layouts like Canva)
+    if api_key:
+        try:
+            vision_text = _transcribe_pdf_with_vision(pdf_path, api_key, settings.OPENAI_MODEL)
+            if vision_text:
+                return {**state, "extracted_text": vision_text, "error": None}
+        except Exception as exc:
+            vision_error = f"Vision transcription failed: {exc}"
+
+    # Priority 2: Fallback to direct PyPDF2 text extraction if vision unavailable or failed
     try:
-        reader = PdfReader(pdf_path)
-        text_parts = [page.extract_text() or "" for page in reader.pages]
-        text = "\n".join(text_parts)
-        clean_text = bleach.clean(text, tags=[], attributes={}, strip=True)
-        return {**state, "extracted_text": clean_text, "error": None}
+        direct_text = _extract_text_with_pypdf(pdf_path)
+        if direct_text:
+            return {**state, "extracted_text": direct_text, "error": None}
     except Exception as exc:
-        return {**state, "error": f"Failed to extract PDF text: {exc}"}
+        direct_text_error = f"Direct PDF text extraction failed: {exc}"
+
+    # Both methods failed; report the most informative error
+    error_msg = vision_error or direct_text_error or "Failed to extract PDF text"
+    return {**state, "error": error_msg}
 
 
 def analyze_profile_node(state: CVProfileState) -> CVProfileState:
@@ -112,9 +236,9 @@ def analyze_profile_node(state: CVProfileState) -> CVProfileState:
     if not api_key:
         return {**state, "structured_data": _fallback_structured_profile(text), "error": None}
 
-    prompt = PROFILE_PROMPT.format(cv_text=text[:5000])
+    prompt = PROFILE_PROMPT.format(cv_text=text[:8000])  # Increased from 5000 to preserve more context
     messages = [
-        SystemMessage(content="You are an expert CV analyzer."),
+        SystemMessage(content="You are an expert CV analyzer. Extract and structure ALL relevant information precisely."),
         HumanMessage(content=prompt),
     ]
 
@@ -125,7 +249,7 @@ def analyze_profile_node(state: CVProfileState) -> CVProfileState:
             llm = ChatOpenAI(
                 model=model_name,
                 temperature=0,
-                max_tokens=500,
+                max_tokens=1500,  # Increased from 500 to allow detailed JSON responses
                 api_key=api_key,
             )
             response = llm.invoke(messages)

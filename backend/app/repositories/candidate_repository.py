@@ -51,19 +51,26 @@ class CandidateRepository:
         self.db.refresh(candidate)
         return candidate
     
-    def update_profile(self, candidate_id: int, skills: List[str], experience_years: int, cv_text: str = None, embedding: List[float] = None) -> Optional[Candidate]:
-        """Update candidate profile after AI analysis"""
+    def update_profile(self, candidate_id: int, skills: List[str], experience_years: int, cv_text: str = None, embedding: List[float] = None, **extra_fields) -> Optional[Candidate]:
+        """Update candidate profile after AI analysis. Accepts optional extra profile fields.
+        Extra fields are applied if present (education, experience, languages, certifications, summary, profile_gaps, recommended_roles).
+        """
         candidate = self.get_by_id(candidate_id)
         if not candidate:
             return None
-        
+
         candidate.skills = skills
         candidate.experience_years = experience_years
         if cv_text:
             candidate.cv_text = cv_text
         if embedding:
             candidate.cv_embedding = embedding
-        
+
+        # Apply optional extra fields safely
+        for key, value in extra_fields.items():
+            if hasattr(candidate, key) and value is not None:
+                setattr(candidate, key, value)
+
         self.db.commit()
         self.db.refresh(candidate)
         return candidate

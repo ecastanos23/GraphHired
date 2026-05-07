@@ -6,7 +6,7 @@ Pydantic Schemas for API Request/Response
 Data validation and serialization
 """
 from pydantic import BaseModel, Field, EmailStr, validator
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from datetime import datetime
 from decimal import Decimal
 
@@ -41,6 +41,11 @@ class CandidateCreate(BaseModel):
     expected_salary: Optional[Decimal] = Field(None, ge=0)
     work_modality: Optional[str] = Field(None, pattern="^(remote|hybrid|onsite)$")
     location: Optional[str] = Field(None, max_length=255)
+    education: Optional[List[Dict[str, Any]]] = None
+    experience: Optional[List[Dict[str, Any]]] = None
+    languages: Optional[List[Dict[str, Any]]] = None
+    certifications: Optional[List[str]] = None
+    summary: Optional[str] = None
 
     @validator('full_name')
     def validate_name(cls, v):
@@ -56,6 +61,11 @@ class CandidateUpdate(BaseModel):
     expected_salary: Optional[Decimal] = Field(None, ge=0)
     work_modality: Optional[str] = Field(None, pattern="^(remote|hybrid|onsite)$")
     location: Optional[str] = Field(None, max_length=255)
+    education: Optional[List[Dict[str, Any]]] = None
+    experience: Optional[List[Dict[str, Any]]] = None
+    languages: Optional[List[Dict[str, Any]]] = None
+    certifications: Optional[List[str]] = None
+    summary: Optional[str] = None
 
 class CandidateResponse(BaseModel):
     """Schema for candidate response"""
@@ -66,6 +76,11 @@ class CandidateResponse(BaseModel):
     expected_salary: Optional[Decimal]
     work_modality: Optional[str]
     location: Optional[str]
+    education: List[Dict[str, Any]] = []
+    experience: List[Dict[str, Any]] = []
+    languages: List[Dict[str, Any]] = []
+    certifications: List[str] = []
+    summary: Optional[str] = None
     skills: List[str] = []
     experience_years: int = 0
     created_at: datetime
@@ -88,6 +103,11 @@ class RegisterRequest(BaseModel):
     expected_salary: Optional[Decimal] = Field(None, ge=0)
     work_modality: Optional[str] = Field(None, pattern="^(remote|hybrid|onsite)$")
     location: Optional[str] = Field(None, max_length=255)
+    education: Optional[List[Dict[str, Any]]] = None
+    experience: Optional[List[Dict[str, Any]]] = None
+    languages: Optional[List[Dict[str, Any]]] = None
+    certifications: Optional[List[str]] = None
+    summary: Optional[str] = None
 
 
 class LoginRequest(BaseModel):
@@ -124,10 +144,16 @@ class ParsedCVResponse(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    contact: Optional[Dict[str, Any]] = None
     skills: List[str] = []
     experience_years: int = 0
-    education: Optional[str] = None
     summary: str = ""
+    # Detailed profile sections
+    education: List[Dict[str, Any]] = []  # [{degree, field, institution, year, description}]
+    experience: List[Dict[str, Any]] = []  # [{role, company, start_date, end_date, duration, description}]
+    languages: List[Dict[str, Any]] = []  # [{language, level}]
+    certifications: List[Any] = []  # [{name, issuer, year}] or [string] for backward compatibility
+    # Analysis summary
     profile_gaps: List[str] = []
     recommended_roles: List[str] = []
     cv_text: str

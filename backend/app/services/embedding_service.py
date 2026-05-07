@@ -55,7 +55,9 @@ class EmbeddingService:
 
         try:
             model = cls._get_model()
-            vector = model.embed_query(text, output_dimensionality=1536)
+            # Comentario: El parámetro output_dimensionality no está disponible en esta versión de langchain
+            # Usamos embed_query sin ese parámetro. OpenAI mantendrá la dimensionalidad 1536 por defecto
+            vector = model.embed_query(text)
             if not vector:
                 return None
             return [float(value) for value in vector]

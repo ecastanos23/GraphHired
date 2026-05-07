@@ -14,7 +14,11 @@ interface ParsedCV {
   phone?: string | null;
   skills: string[];
   experience_years: number;
-  education?: string | null;
+  contact?: { email?: string | null; phone?: string | null; location?: string | null } | null;
+  education?: any;
+  experience?: any;
+  languages?: any;
+  certifications?: string[];
   summary: string;
   profile_gaps: string[];
   recommended_roles: string[];
@@ -44,10 +48,15 @@ export default function RegisterPage() {
     password: '',
     full_name: '',
     phone: '',
+    languages: '',
+    certifications: '',
+    education: '', // Texto de educación (summary)
+    experience: '', // Texto de experiencia (summary)
+    summary: '', // Resumen profesional
     expected_salary: '',
     work_modality: 'remote',
     location: 'Bogota',
-    cv_text: '',
+    cv_text: '', // Se mantiene en estado pero no se muestra en formulario
   });
 
   const fieldClass =
@@ -61,13 +70,69 @@ export default function RegisterPage() {
       const response = await postForm<ParsedCV>('/api/candidates/parse-cv-pdf', payload);
       if (!response) return;
 
+      // Parse certifications: if array of objects, extract names; if array of strings, use directly
+      let certStr = '';
+      if ((response as any).certifications && Array.isArray((response as any).certifications)) {
+        certStr = (response as any).certifications
+          .map((cert: any) => (typeof cert === 'string' ? cert : cert.name || JSON.stringify(cert)))
+          .join(', ');
+      }
+
+      // Parse languages: if array of objects with 'language' field, extract language names
+      let langStr = '';
+      if ((response as any).languages && Array.isArray((response as any).languages)) {
+        langStr = (response as any).languages
+          .map((lang: any) => (typeof lang === 'string' ? lang : lang.language || ''))
+          .filter((l: string) => l)
+          .join(', ');
+      }
+
+      // Parse education: if array of objects, create summary; if string, use directly
+      let educationStr = '';
+      if ((response as any).education && Array.isArray((response as any).education)) {
+        educationStr = (response as any).education
+          .map((edu: any) => {
+            if (typeof edu === 'string') return edu;
+            const degree = edu.degree || '';
+            const institution = edu.institution || '';
+            const year = edu.year || '';
+            return `${degree} - ${institution} (${year})`.replace(/\s*-\s*\(/g, ' (').trim();
+          })
+          .filter((e: string) => e)
+          .join('\n');
+      }
+
+      // Parse experience: if array of objects, create summary; if string, use directly
+      let experienceStr = '';
+      if ((response as any).experience && Array.isArray((response as any).experience)) {
+        experienceStr = (response as any).experience
+          .map((exp: any) => {
+            if (typeof exp === 'string') return exp;
+            const role = exp.role || '';
+            const company = exp.company || '';
+            const dates = exp.start_date && exp.end_date ? `(${exp.start_date} - ${exp.end_date})` : '';
+            return `${role} at ${company} ${dates}`.trim();
+          })
+          .filter((e: string) => e)
+          .join('\n');
+      }
+
+      // Extract location from contact or use provided location
+      const extractedLocation = response.contact?.location || response.cv_text.split('\n').find((line: string) => line.includes('Colombia'))?.split('-')[0]?.trim() || 'Bogota';
+
       setParsed(response);
       setFormData((prev) => ({
         ...prev,
         email: response.email || prev.email,
         full_name: response.full_name || prev.full_name,
         phone: response.phone || prev.phone,
-        cv_text: response.cv_text || prev.cv_text,
+        cv_text: response.cv_text || prev.cv_text, // Se mantiene guardado pero oculto
+        summary: response.summary || prev.summary, // Mostrar solo el resumen en formulario
+        languages: langStr || prev.languages,
+        certifications: certStr || prev.certifications,
+        education: educationStr || prev.education,
+        experience: experienceStr || prev.experience,
+        location: extractedLocation || prev.location,
       }));
     } catch (err) {
       console.error('Error parsing CV PDF:', err);
@@ -77,10 +142,16 @@ export default function RegisterPage() {
   const handleRegister = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
-      const response = await post<AuthResponse>('/api/auth/register', {
+      const payload = {
         ...formData,
         expected_salary: formData.expected_salary ? Number(formData.expected_salary) : null,
-      });
+        languages: formData.languages ? formData.languages.split(',').map((s) => ({ language: s.trim() })) : undefined,
+        certifications: formData.certifications ? formData.certifications.split(',').map((s) => s.trim()) : undefined,
+        // Send education and experience as text summaries (can be parsed by backend if needed)
+        education: formData.education ? [{ summary: formData.education }] : undefined,
+        experience: formData.experience ? [{ summary: formData.experience }] : undefined,
+      };
+      const response = await post<AuthResponse>('/api/auth/register', payload);
       if (!response) return;
 
       localStorage.setItem('graphhired_token', response.access_token);
@@ -90,6 +161,16 @@ export default function RegisterPage() {
       console.error('Error registering candidate:', err);
     }
   };
+
+    // Texto de trazabilidad / recomendaciones generadas a partir del resultado del agente
+    const aiTraceText = parsed
+      ? (() => {
+          const highlights = parsed.skills && parsed.skills.length ? parsed.skills.slice(0, 4).join(', ') : '—';
+          const gaps = parsed.profile_gaps && parsed.profile_gaps.length ? parsed.profile_gaps.join(', ') : 'Ninguno';
+          const roles = parsed.recommended_roles && parsed.recommended_roles.length ? parsed.recommended_roles.slice(0, 3).join(', ') : '—';
+          return `La IA procesó ${parsed.extracted_text_length.toLocaleString()} caracteres, detectó ${parsed.skills.length} habilidades y ${parsed.experience.length} puestos de experiencia. Destacados: ${highlights}. Recomendación: completar campos faltantes: ${gaps}. Roles sugeridos: ${roles}.`;
+        })()
+      : '';
 
   return (
     <div className="space-y-8">
@@ -130,7 +211,7 @@ export default function RegisterPage() {
           {parsed && (
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Resultado IA</p>
-              <p className="mt-3 text-sm leading-6 text-slate-700">{parsed.summary || 'Perfil extraido.'}</p>
+              <p className="mt-3 text-sm leading-6 text-slate-700">{aiTraceText}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {parsed.skills.slice(0, 10).map((skill) => (
                   <span key={skill} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -194,8 +275,28 @@ export default function RegisterPage() {
           </label>
 
           <label className="mt-5 block text-sm font-medium text-slate-700">
-            Texto extraido del CV
-            <textarea required rows={8} value={formData.cv_text} onChange={(e) => setFormData({ ...formData, cv_text: e.target.value })} className={`${fieldClass} resize-none`} />
+            Idiomas (separados por coma)
+            <input value={formData.languages} onChange={(e) => setFormData({ ...formData, languages: e.target.value })} className={fieldClass} />
+          </label>
+
+          <label className="mt-5 block text-sm font-medium text-slate-700">
+            Educación
+            <textarea rows={3} value={formData.education} onChange={(e) => setFormData({ ...formData, education: e.target.value })} className={`${fieldClass} resize-none`} placeholder="Grado - Institución (Año)" />
+          </label>
+
+          <label className="mt-5 block text-sm font-medium text-slate-700">
+            Experiencia laboral
+            <textarea rows={3} value={formData.experience} onChange={(e) => setFormData({ ...formData, experience: e.target.value })} className={`${fieldClass} resize-none`} placeholder="Cargo en Empresa (Fecha inicio - Fecha fin)" />
+          </label>
+
+          <label className="mt-5 block text-sm font-medium text-slate-700">
+            Certificaciones (separadas por coma)
+            <input value={formData.certifications} onChange={(e) => setFormData({ ...formData, certifications: e.target.value })} className={fieldClass} />
+          </label>
+
+          <label className="mt-5 block text-sm font-medium text-slate-700">
+            Resumen Profesional (extraído del CV)
+            <textarea rows={4} value={formData.summary} onChange={(e) => setFormData({ ...formData, summary: e.target.value })} className={`${fieldClass} resize-none`} placeholder="Resumen de tu perfil profesional..." />
           </label>
 
           <HoverButton

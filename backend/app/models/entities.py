@@ -56,6 +56,17 @@ class Candidate(Base):
     location = Column(String(255), nullable=True)
     skills = Column(JSON, default=list)
     experience_years = Column(Integer, default=0)
+    # Extended CV fields for richer profile extraction
+    education = Column(JSON, default=list)          # list of {degree, field, institution, year}
+    experience = Column(JSON, default=list)         # list of {role, company, start_year, end_year, years}
+    languages = Column(JSON, default=list)          # list of {language, level}
+    certifications = Column(JSON, default=list)
+    summary = Column(Text, nullable=True)
+    profile_gaps = Column(JSON, default=list)
+    recommended_roles = Column(JSON, default=list)
+    cv_filename = Column(String(255), nullable=True)
+    parsed_at = Column(DateTime, nullable=True)
+    analysis_model = Column(String(100), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -98,6 +109,9 @@ class Application(Base):
     evidence = Column(JSON, default=dict)
     next_steps = Column(JSON, default=list)
     agent_reason = Column(Text, nullable=True)
+    # Snapshot of candidate profile at application time
+    snapshot_skills = Column(JSON, default=list)
+    snapshot_experience_years = Column(Integer, default=0)
     applied_at = Column(DateTime, server_default=func.now())
 
     # Relationships
@@ -135,4 +149,6 @@ class AgentEvent(Base):
     reason = Column(Text, nullable=False)
     input_summary = Column(Text, nullable=True)
     output_summary = Column(Text, nullable=True)
+    # Columna JSON para metadatos del evento; mapeada como 'metadata' en la BD
+    metadata_json = Column("metadata", JSON, default=dict)
     created_at = Column(DateTime, server_default=func.now())

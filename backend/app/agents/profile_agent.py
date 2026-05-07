@@ -34,44 +34,105 @@ class ProfileState(TypedDict):
     error: Optional[str]
 
 # Optimized prompt for token efficiency (environmental consideration)
-EXTRACTION_PROMPT = """Analyze this CV and extract information in JSON format:
+EXTRACTION_PROMPT = """Extract a complete, structured professional profile from the CV text below. Return ONLY valid JSON.
+
+EXTRACTION RULES - Be thorough and explicit:
+1. full_name: Extract complete name (first + last names).
+2. contact: Extract all contact info (email, phone with country code, city/location).
+3. summary: Combine "Resumen personal" or intro sections; max 3 sentences capturing key strengths.
+4. experience_years: Calculate total years of professional experience (today - earliest start date).
+5. experience: For EACH job, extract:
+   - role: Job title (e.g. "McDonald's Cashier", "Software Developer")
+   - company: Company name
+   - start_date: Start month/year (e.g. "2024-05")
+   - end_date: End month/year or "present" if current
+   - duration: Calculated years (e.g. 0.3 for 3 months)
+   - description: 1-2 line bullet list of main duties/accomplishments
+6. education: For EACH degree/course, extract:
+   - degree: Degree type (e.g. "Ingeniería de Sistemas", "Técnico Laboral", "Bachillerato")
+   - field: Field of study if applicable
+   - institution: School/university name
+   - year: Graduation year or "en curso" if ongoing
+   - description: Duration or key info (e.g. "88 horas")
+7. skills: List EXPLICITLY mentioned technical skills (not soft skills). Normalize to lowercase.
+8. languages: Extract language + proficiency level. If not stated, infer from context.
+9. certifications: Courses, seminars, certifications (separate from degrees).
+10. strengths: Key professional strengths (max 3-4, infer from skills and experience).
+11. recommended_roles: Suggest 2-3 roles based on skills + experience.
+12. profile_gaps: List missing critical info (salary expectations, availability, work preferences).
+
+Return ONLY this JSON schema (no explanations):
 {
-  "skills": ["skill1", "skill2"],
-  "experience_years": number,
-  "education": "highest degree",
-  "summary": "2-sentence professional summary",
-  "strengths": ["strength1", "strength2", "strength3"],
-  "recommended_roles": ["role1", "role2", "role3"]
+    "full_name": string | null,
+    "contact": { "email": string | null, "phone": string | null, "location": string | null },
+    "summary": string | null,
+    "experience_years": number,
+    "experience": [
+        {
+            "role": string,
+            "company": string | null,
+            "start_date": string | null,
+            "end_date": string | null,
+            "duration": number | null,
+            "description": string | null
+        }
+    ],
+    "education": [
+        {
+            "degree": string | null,
+            "field": string | null,
+            "institution": string | null,
+            "year": string | number | null,
+            "description": string | null
+        }
+    ],
+    "skills": string[],
+    "languages": [ { "language": string, "level": string | null } ],
+    "certifications": [ { "name": string, "issuer": string | null, "year": string | null } ],
+    "strengths": string[],
+    "recommended_roles": string[],
+    "profile_gaps": string[]
 }
 
 CV:
 {cv_text}
+"""
 
-Return ONLY valid JSON, no explanations."""
+JOB_DATASET_PROMPT = """Act as an expert recruiter for the Colombian job market (2026).
+Produce EXACTLY 20 realistic job offers tailored to the candidate context. Return ONLY a JSON array.
 
-JOB_DATASET_PROMPT = """Actua como experto en reclutamiento y mercado laboral de Colombia.
-Genera exactamente 20 ofertas de empleo reales o altamente realistas para Colombia (2026),
-incluyendo variedad de seniority (junior, mid, senior, gerencial) y sectores:
-Tecnologia, Finanzas, Marketing, Salud, Ingenieria Civil.
+Inputs (substitute values):
+- skills: {skills} (comma-separated)
+- candidate_location: {location} (free-text; prefer this location when possible)
+- experience_years: {experience}
 
-Contexto de candidato:
-- Skills detectadas: {skills}
-- Ubicacion preferida: {location}
-- Experiencia aproximada (anios): {experience}
+For each job item return exactly these fields:
+{
+    "title": string,
+    "company": string,
+    "match_percentage": number,        // 40–95
+    "salary": string,                  // format: "$X.XXX.XXX - $Y.YYY.YYY"
+    "mode": "Remoto" | "Hibrido" | "Presencial",
+    "location": string,                // free-text city or "Remoto (Colombia)"
+    "skills_owned": string[3],         // exactly 3 skills from candidate where possible
+    "skills_to_develop": string[1-2]   // 1 or 2 relevant missing skills
+}
 
-Entrega SOLO un arreglo JSON valido. Cada item debe tener estos campos exactos:
-- title (string)
-- company (string)
-- match_percentage (number entre 40 y 95)
-- salary (string en formato "$X.XXX.XXX - $Y.YYY.YYY")
-- mode ("Remoto" | "Hibrido" | "Presencial")
-- location ("Bogota" | "Medellin" | "Cali" | "Barranquilla" | "Bucaramanga")
-- skills_owned (array de 3 strings)
-- skills_to_develop (array de 1 o 2 strings)
+Rules and constraints:
+- Return exactly 20 items; no duplicates of title+company.
+- Prioritize relevance to candidate skills and experience.
+- Prefer candidate_location but include geographic variety.
+- match_percentage must reflect realistic alignment.
+- Salary ranges must be coherent for the role and seniority (Colombian monthly COP 2026).
+- Keep items concise; do not include descriptions beyond the required fields.
+- Do not include any explanatory text outside the JSON array.
 
-Restricciones:
-- Salarios coherentes con mercado colombiano 2026.
-- Sin texto adicional fuera del JSON.
+Context:
+skills: {skills}
+candidate_location: {location}
+experience_years: {experience}
+
+Return the JSON array now.
 """
 
 def get_llm():
@@ -83,7 +144,7 @@ def get_llm():
     return ChatOpenAI(
         model=settings.OPENAI_MODEL,
         temperature=0,  # Deterministic output for consistency
-        max_tokens=500,  # Limit tokens for efficiency
+        max_tokens=1500,  # Increased from 500 to handle detailed JSON responses
         api_key=api_key
     )
 
@@ -100,19 +161,23 @@ def extract_profile_node(state: ProfileState) -> ProfileState:
     llm = get_llm()
     if llm:
         try:
-            prompt = EXTRACTION_PROMPT.format(cv_text=cv_text[:3000])  # Limit input for token efficiency
+            prompt = EXTRACTION_PROMPT.format(cv_text=cv_text[:8000])  # Increased from 3000 to preserve context
             messages = [
-                SystemMessage(content="You are a CV analyzer. Extract structured data from CVs."),
+                SystemMessage(content="You are an expert CV analyzer. Extract and structure ALL relevant information precisely."),
                 HumanMessage(content=prompt)
             ]
             response = llm.invoke(messages)
             
             # Parse JSON response
-            data = json.loads(response.content)
+            raw_content = str(response.content).strip()
+            if raw_content.startswith("```"):
+                raw_content = re.sub(r"^```(?:json)?", "", raw_content).strip()
+                raw_content = re.sub(r"```$", "", raw_content).strip()
+            data = json.loads(raw_content)
             
             # Build extracted_data with candidate name and AI analysis
             extracted_data = {
-                "name": data.get("name", "Candidato"),
+                "name": data.get("full_name", "Candidato"),
                 "top_skills": data.get("skills", [])[:5],
                 "match_confidence": 0.95,  # Initial confidence
                 "analysis_method": "llm"
@@ -123,12 +188,17 @@ def extract_profile_node(state: ProfileState) -> ProfileState:
                 "extracted_data": extracted_data,
                 "skills": data.get("skills", []),
                 "experience_years": data.get("experience_years", 0),
-                "education": data.get("education"),
+                "education": data.get("education", []),  # Now structured list
                 "summary": data.get("summary", ""),
                 "strengths": data.get("strengths", []),
                 "recommended_roles": data.get("recommended_roles", []),
                 "match_confidence": 0.95,
-                "error": None
+                "error": None,
+                # New fields for detailed profile
+                "_experience_detailed": data.get("experience", []),
+                "_languages": data.get("languages", []),
+                "_certifications": data.get("certifications", []),
+                "_profile_gaps": data.get("profile_gaps", [])
             }
         except Exception as e:
             # Fall through to basic extraction
@@ -181,7 +251,7 @@ def basic_extraction(state: ProfileState) -> ProfileState:
         "extracted_data": {},  # Will be filled by caller
         "skills": found_skills[:10],  # Limit to top 10
         "experience_years": experience,
-        "education": "Not detected",
+        "education": [],  # Return empty list, not string
         "summary": "Perfil analizado con extracción básica",
         "strengths": found_skills[:3] if found_skills else ["Resolución de problemas"],
         "recommended_roles": ["Software Developer"],
@@ -205,14 +275,14 @@ agent_executor = create_profile_graph()
 def analyze_profile(cv_text: str, expectations: dict = None) -> dict:
     """
     Analyze CV and extract profile information (5.2 Proceso)
-    Returns structured profile data including extracted_data
+    Returns structured profile data including extracted_data and detailed fields
     
     Args:
         cv_text: Raw CV text content
         expectations: Optional dict with {salary, modality, location}
     
     Returns:
-        Dictionary with extracted profile information
+        Dictionary with extracted profile information including experience, education, languages, certifications
     """
     if expectations is None:
         expectations = {}
@@ -233,15 +303,40 @@ def analyze_profile(cv_text: str, expectations: dict = None) -> dict:
     
     result = agent_executor.invoke(initial_state)
     
+    # Ensure all list fields are actually lists (never strings or None)
+    education = result.get("education", [])
+    if not isinstance(education, list):
+        education = []
+    
+    experience = result.get("_experience_detailed", [])
+    if not isinstance(experience, list):
+        experience = []
+    
+    languages = result.get("_languages", [])
+    if not isinstance(languages, list):
+        languages = []
+    
+    certifications = result.get("_certifications", [])
+    if not isinstance(certifications, list):
+        certifications = []
+    
+    profile_gaps = result.get("_profile_gaps", [])
+    if not isinstance(profile_gaps, list):
+        profile_gaps = []
+    
     return {
         "extracted_data": result["extracted_data"],
         "skills": result["skills"],
         "experience_years": result["experience_years"],
-        "education": result["education"],
+        "education": education,
+        "experience": experience,
+        "languages": languages,
+        "certifications": certifications,
         "summary": result["summary"],
         "strengths": result["strengths"],
         "recommended_roles": result["recommended_roles"],
-        "match_confidence": result["match_confidence"]
+        "match_confidence": result["match_confidence"],
+        "profile_gaps": profile_gaps
     }
 
 

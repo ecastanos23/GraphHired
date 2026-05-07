@@ -22,10 +22,20 @@ async def get_agent_trace(
     limit: int = Query(100, gt=0, le=200),
     db: Session = Depends(get_db),
 ):
-    """Return the trace timeline for a candidate."""
+    """
+    Return the trace timeline for a candidate.
+    
+    Si el candidato no existe, retorna una lista vacía en lugar de 404.
+    Esto hace el endpoint más resiliente para diagnósticos y datos ausentes.
+    """
+    # Verificar si el candidato existe
     candidate = CandidateRepository(db).get_by_id(candidate_id)
+    
+    # Si no existe, retornar lista vacía en lugar de error 404
     if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
+        return []
+    
+    # Si existe, retornar su historial de eventos de agentes
     return AgentEventRepository(db).get_for_candidate(candidate_id, limit=limit)
 
 

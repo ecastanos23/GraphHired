@@ -24,35 +24,76 @@ export function useApi(): UseApiReturn {
 
   const handleRequest = async <T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    timeoutMs: number = 30000
   ): Promise<T | null> => {
     setLoading(true);
     setError(null);
 
     try {
+      // Obtener token JWT del localStorage
       const token = typeof window !== 'undefined' ? localStorage.getItem('graphhired_token') : null;
       const isFormData = options.body instanceof FormData;
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        headers: {
-          ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...options.headers,
-        },
-        ...options,
-      });
+      
+      // Crear controlador de abortó con timeout automático
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn(`⏱️ Timeout después de ${timeoutMs}ms en ${endpoint} - abortando solicitud`);
+        controller.abort();
+      }, timeoutMs);
+      
+      try {
+        // Log de debug: mostrar inicio de la solicitud
+        console.debug(`📤 Iniciando ${options.method || 'GET'} a ${API_URL}${endpoint}`);
+        
+        const response = await fetch(`${API_URL}${endpoint}`, {
+          headers: {
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...options.headers,
+          },
+          ...options,
+          signal: controller.signal, // Pasar la señal de abort
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const detail = typeof errorData.detail === 'string'
-          ? errorData.detail
-          : JSON.stringify(errorData.detail || errorData);
-        throw new Error(detail || `HTTP error ${response.status}`);
+        // Limpiar timeout si la solicitud fue exitosa
+        clearTimeout(timeoutId);
+
+        // Log de debug: mostrar código de respuesta
+        console.debug(`📥 Respuesta ${response.status} desde ${endpoint}`);
+
+        if (!response.ok) {
+          // Intentar parsear el error JSON del servidor
+          const errorData = await response.json().catch(() => ({}));
+          const detail = typeof errorData.detail === 'string'
+            ? errorData.detail
+            : JSON.stringify(errorData.detail || errorData);
+          
+          const errorMsg = detail || `HTTP error ${response.status}`;
+          console.error(`❌ Error HTTP ${response.status}: ${errorMsg}`);
+          throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+        console.debug(`✅ Datos recibidos exitosamente de ${endpoint}`);
+        return data as T;
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId);
+        
+        // Diferenciar entre timeout y otros errores
+        if (fetchErr.name === 'AbortError') {
+          const msg = `⏱️ La solicitud a ${endpoint} tardó más de ${timeoutMs}ms`;
+          console.error(msg);
+          throw new Error(msg);
+        }
+        
+        // Otros errores de fetch (CORS, conexión rechazada, etc)
+        console.error(`🔴 Error en fetch para ${endpoint}:`, fetchErr.message);
+        throw fetchErr;
       }
-
-      const data = await response.json();
-      return data as T;
     } catch (err: any) {
       const message = err.message || 'An error occurred';
+      console.error(`API Error en ${options.method || 'GET'} ${endpoint}:`, message);
       setError(message);
       throw err;
     } finally {
@@ -85,9 +126,10 @@ export function useApi(): UseApiReturn {
     });
   }, []);
 
-  const del = useCallback(async (endpoint: string): Promise<boolean> => {
-    await handleRequest(endpoint, { method: 'DELETE' });
-    return true;
+  const del = useCallback((endpoint: string): Promise<boolean> => {
+    return handleRequest<boolean>(endpoint, { method: 'DELETE' }).then(
+      (res) => !!res
+    );
   }, []);
 
   return { loading, error, get, post, postForm, put, del };
